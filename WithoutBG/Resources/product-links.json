@@ -1,0 +1,8 @@
+{
+  "website": "https://withoutbg.com",
+  "api": "https://withoutbg.com/docs/api-model",
+  "benchmarks": "https://withoutbg.com/open-weight-model/results",
+  "github": "https://github.com/withoutbg/withoutbg",
+  "license": "https://withoutbg.com/open-weight-model/license",
+  "ossRepo": "https://github.com/withoutbg/withoutbg"
+}

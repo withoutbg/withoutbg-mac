@@ -1,0 +1,49 @@
+name: WithoutBG
+options:
+  bundleIdPrefix: com.withoutbg
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_STRICT_CONCURRENCY: complete
+targets:
+  WithoutBG:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: WithoutBG
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.withoutbg.mac
+        PRODUCT_NAME: withoutBG
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_HARDENED_RUNTIME: YES
+        COMBINE_HIDPI_IMAGES: YES
+        INFOPLIST_KEY_NSHumanReadableCopyright: "This app runs withoutBG OSS locally on your Mac."
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.photography"
+        INFOPLIST_KEY_NSMainStoryboardFile: ""
+        GENERATE_INFOPLIST_FILE: YES
+    entitlements:
+      path: WithoutBG/WithoutBG.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.security.files.downloads.read-write: true
+
+schemes:
+  WithoutBG:
+    build:
+      targets:
+        WithoutBG: all
+    run:
+      config: Debug
+    archive:
+      config: Release
