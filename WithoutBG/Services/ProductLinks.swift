@@ -4,6 +4,7 @@ import Foundation
 /// for every URL used in Help, About and Settings.
 struct ProductLinks: Decodable {
     let website: URL
+    let openWeights: URL
     let api: URL
     let benchmarks: URL
     let github: URL
@@ -22,6 +23,7 @@ struct ProductLinks: Decodable {
             // resource is missing.
             return ProductLinks(
                 website: URL(string: "https://withoutbg.com")!,
+                openWeights: URL(string: "https://withoutbg.com/open-weight-model")!,
                 api: URL(string: "https://withoutbg.com/docs/api-model")!,
                 benchmarks: URL(string: "https://withoutbg.com/open-weight-model/results")!,
                 github: URL(string: "https://github.com/withoutbg/withoutbg")!,

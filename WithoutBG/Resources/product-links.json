@@ -1,5 +1,6 @@
 {
   "website": "https://withoutbg.com",
+  "openWeights": "https://withoutbg.com/open-weight-model",
   "api": "https://withoutbg.com/docs/api-model",
   "benchmarks": "https://withoutbg.com/open-weight-model/results",
   "github": "https://github.com/withoutbg/withoutbg",

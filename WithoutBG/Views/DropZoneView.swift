@@ -48,8 +48,10 @@ struct DropZoneView: View {
 
     private var servingLine: some View {
         HStack(spacing: 6) {
-            Text("Serving withoutBG OSS")
+            Text("Serving")
                 .foregroundStyle(WBGColors.textTertiary)
+            Link("withoutBG Open Weights", destination: ProductLinks.shared.openWeights)
+                .foregroundStyle(WBGColors.textSecondary)
             Text("·")
                 .foregroundStyle(WBGColors.textTertiary)
             Link("GitHub", destination: ProductLinks.shared.github)
