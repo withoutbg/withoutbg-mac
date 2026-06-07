@@ -34,12 +34,13 @@ struct ContentView: View {
             if model.isDragOver && !model.isDraggingOut { dragOverlay }
         }
         .animation(.easeInOut(duration: 0.15), value: model.isDragOver)
-        .overlay {
-            if let job = model.previewJob {
-                ImagePreviewOverlay(model: model, job: job)
-            }
-        }
-        .animation(.easeInOut(duration: 0.2), value: model.previewJobID != nil)
+        .onChange(of: progressKey) { _, _ in model.handleQueueProgress() }
+    }
+
+    /// Compact signature of the queue's progress state. Changing it drives the
+    /// Dock progress bar / badge and the batch-finished notification.
+    private var progressKey: String {
+        "\(queue.jobs.count)-\(queue.completedCount)-\(queue.processingCount)-\(queue.queuedCount)-\(queue.errorCount)"
     }
 
     // MARK: - Toolbar
@@ -64,6 +65,13 @@ struct ContentView: View {
 
         // Trailing: contextual actions
         ToolbarItemGroup(placement: .automatic) {
+            let shareURLs = model.shareURLs
+            if !shareURLs.isEmpty {
+                ShareLink(items: shareURLs) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+                .help("Share results via AirDrop, Messages, Mail…")
+            }
             if model.hasSelection {
                 Button("Deselect") { model.clearSelection() }
                     .help("Clear selection")

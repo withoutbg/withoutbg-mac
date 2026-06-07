@@ -2,10 +2,12 @@ import SwiftUI
 
 @main
 struct WithoutBGApp: App {
-    // ── Processor injection ──────────────────────────────────────────────────
-    // Real on-device inference via the bundled WBGNet Core ML model.
-    // Swap back to `MockProcessor()` to run the UI without the model.
-    @State private var model = AppModel(processor: CoreMLProcessor())
+    // The shared model is owned by the AppDelegate so AppKit entry points
+    // (Quick Look, Continuity Camera, Finder Services) feed the same queue the
+    // window shows. Real on-device inference runs via the bundled Core ML model.
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
+    private var model: AppModel { appDelegate.model }
 
     @AppStorage(SettingsKey.appearance) private var appearanceRaw = AppearanceMode.system.rawValue
 

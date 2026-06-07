@@ -84,6 +84,43 @@ enum ExportService {
         return url
     }
 
+    // MARK: - Quick Look
+
+    /// A file URL suitable for the system Quick Look panel, named after the job
+    /// so the panel shows the right title. Finished jobs hard-link the already
+    /// staged transparent PNG (no re-encode); in-progress jobs encode whatever
+    /// image is currently available.
+    static func previewFileURL(for job: Job) -> URL? {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wbg-preview", isDirectory: true)
+            .appendingPathComponent(job.id.uuidString, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("\(job.baseName).png")
+
+        if job.status == .done, let staged = job.stagedURL {
+            if FileManager.default.fileExists(atPath: url.path) { return url }
+            do {
+                try FileManager.default.linkItem(at: staged, to: url)
+                return url
+            } catch {
+                return staged
+            }
+        }
+
+        let image = job.status == .done
+            ? job.processedImage
+            : (job.preparedImage ?? job.thumbnail ?? job.beforeImage)
+        guard let image, let data = ImageUtilities.pngData(from: image) else {
+            return job.stagedURL
+        }
+        do {
+            try data.write(to: url)
+            return url
+        } catch {
+            return job.stagedURL
+        }
+    }
+
     // MARK: - Clipboard
 
     /// Copy one or more results to the general pasteboard as PNG(s).

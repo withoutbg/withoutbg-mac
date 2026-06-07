@@ -164,19 +164,6 @@ struct QueueGridView: View {
     // MARK: - Keyboard
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
-        if model.previewJobID != nil {
-            switch press.key {
-            case .leftArrow:
-                model.movePreview(by: -1); return .handled
-            case .rightArrow:
-                model.movePreview(by: 1); return .handled
-            case .space, .escape:
-                model.closePreview(); return .handled
-            default:
-                return .ignored
-            }
-        }
-
         let extend = press.modifiers.contains(.shift)
         switch press.key {
         case .leftArrow:
@@ -189,19 +176,20 @@ struct QueueGridView: View {
             model.moveSelection(by: columnCount, extend: extend); return .handled
         case .space:
             model.togglePreview(); return .handled
+        case .return:
+            // Finder convention: Return on a single selection starts a rename.
+            if let id = model.singleSelection {
+                model.beginRename(id); return .handled
+            }
+            return .ignored
         case .delete, .deleteForward:
+            // ⌘⌫ deletes (undoable). Bare Delete is ignored to avoid surprises.
             if press.modifiers.contains(.command) {
-                model.confirmRemoveSelection()
-                return .handled
+                model.deleteSelection(); return .handled
             }
             return .ignored
         case .escape:
-            if model.previewJobID != nil {
-                model.closePreview()
-            } else {
-                model.clearSelection()
-            }
-            return .handled
+            model.clearSelection(); return .handled
         default:
             break
         }

@@ -27,16 +27,26 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_HARDENED_RUNTIME: YES
         COMBINE_HIDPI_IMAGES: YES
-        INFOPLIST_KEY_NSHumanReadableCopyright: "This app runs withoutBG OSS locally on your Mac."
-        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.photography"
-        INFOPLIST_KEY_NSMainStoryboardFile: ""
-        GENERATE_INFOPLIST_FILE: YES
+    info:
+      path: WithoutBG/Info.plist
+      properties:
+        LSApplicationCategoryType: public.app-category.photography
+        NSHumanReadableCopyright: "This app runs withoutBG OSS locally on your Mac."
+        NSCameraUsageDescription: "withoutBG uses Continuity Camera to import photos from a nearby iPhone or iPad."
+        NSServices:
+          - NSMenuItem:
+              default: Remove Background
+            NSMessage: removeBackground
+            NSPortName: withoutBG
+            NSSendFileTypes:
+              - public.image
     entitlements:
       path: WithoutBG/WithoutBG.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-write: true
         com.apple.security.files.downloads.read-write: true
+        com.apple.security.device.camera: true
 
 schemes:
   WithoutBG:

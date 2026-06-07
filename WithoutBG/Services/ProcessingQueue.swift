@@ -59,6 +59,21 @@ final class ProcessingQueue {
         jobs.removeAll { $0.id == id }
     }
 
+    /// Re-insert previously removed jobs at their original offsets. Used by Undo
+    /// to restore a deletion. Offsets are clamped so out-of-range values append.
+    func restore(_ items: [(offset: Int, job: Job)]) {
+        for item in items.sorted(by: { $0.offset < $1.offset }) {
+            let idx = min(max(0, item.offset), jobs.count)
+            jobs.insert(item.job, at: idx)
+        }
+    }
+
+    /// Set a job's display name verbatim (no extension handling). Used by Undo to
+    /// restore the exact previous file name after a rename.
+    func setFileName(_ id: UUID, _ fileName: String) {
+        patch(id) { $0.fileName = fileName }
+    }
+
     /// Rename a job, preserving its original extension. `newBaseName` is the
     /// base name without extension; empty input is ignored.
     func rename(_ id: UUID, to newBaseName: String) {

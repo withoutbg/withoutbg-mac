@@ -28,10 +28,36 @@ struct AppCommands: Commands {
                 .disabled(!model.canExportAll)
         }
 
-        // Edit menu — paste images from the clipboard (⌘V)
+        // Edit menu — Undo/Redo (forgiveness instead of confirmation dialogs).
+        CommandGroup(replacing: .undoRedo) {
+            Button(model.undoTitle) { model.performUndo() }
+                .keyboardShortcut("z", modifiers: .command)
+                .disabled(!model.canUndo)
+            Button(model.redoTitle) { model.performRedo() }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+                .disabled(!model.canRedo)
+        }
+
+        // Edit menu — selection + clipboard actions, all discoverable with their
+        // shortcuts (Copy, Paste, Delete, Select All, Rename).
         CommandGroup(replacing: .pasteboard) {
+            Button("Copy") { model.copySelection() }
+                .keyboardShortcut("c", modifiers: .command)
+                .disabled(model.queue.doneJobs.isEmpty)
             Button("Paste") { model.paste() }
                 .keyboardShortcut("v", modifiers: .command)
+            Divider()
+            Button("Delete") { model.deleteSelection() }
+                .keyboardShortcut(.delete, modifiers: .command)
+                .disabled(!model.hasSelection)
+            Button("Rename") {
+                if let id = model.singleSelection { model.beginRename(id) }
+            }
+            .disabled(model.singleSelection == nil)
+            Divider()
+            Button("Select All") { model.selectAll() }
+                .keyboardShortcut("a", modifiers: .command)
+                .disabled(!model.queue.hasJobs)
         }
 
         // Help menu — ecosystem links

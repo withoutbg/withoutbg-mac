@@ -49,6 +49,13 @@ struct ImageCardView: View {
         .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .onTapGesture(perform: handlePrimaryClick)
         .contextMenu { contextMenu }
+        .onChange(of: model.renamingJobID) { _, id in
+            // The Return key / Rename menu item asks this card to edit in place.
+            if id == job.id {
+                beginRename()
+                model.renamingJobID = nil
+            }
+        }
     }
 
     /// Finder-style click handling without stacking single + double `onTapGesture`
@@ -202,14 +209,20 @@ struct ImageCardView: View {
             if !model.selectedDoneJobs.isEmpty {
                 Button("Download…") { model.downloadSelection() }
                 Button("Copy") { model.copySelection() }
+                ShareLink(items: model.shareURLs) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
             }
             Divider()
-            Button("Delete", role: .destructive) { model.confirmRemoveSelection() }
+            Button("Delete", role: .destructive) { model.deleteSelection() }
         } else {
             Button("Preview") { model.openPreview(job.id) }
             if isDone {
                 Button("Download…") { model.download(job) }
                 Button("Copy") { model.copy(job) }
+                if let url = ExportService.stagedFileURL(for: job) {
+                    ShareLink(item: url)
+                }
                 Divider()
             }
             Button("Rename…") { beginRename() }
@@ -217,7 +230,7 @@ struct ImageCardView: View {
                 Button("Retry") { model.queue.retryJob(job.id) }
             }
             Divider()
-            Button("Delete", role: .destructive) { model.confirmRemove(job.id) }
+            Button("Delete", role: .destructive) { model.delete(job.id) }
         }
     }
 

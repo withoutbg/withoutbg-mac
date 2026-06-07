@@ -13,8 +13,6 @@ import UniformTypeIdentifiers
 final class AppModel {
     let queue: ProcessingQueue
 
-    /// Job currently shown in the Quick Look-style preview overlay.
-    var previewJobID: UUID?
     /// True while files are dragged over the window.
     var isDragOver = false
     /// True while the user is dragging cards *out* of the app, so we can suppress
@@ -26,16 +24,27 @@ final class AppModel {
     /// Anchor used for shift-range selection and arrow-key navigation.
     private var selectionAnchorID: UUID?
 
+    /// Job that should enter inline-rename mode. Set by the Return key / menu so
+    /// the matching card focuses its text field; cleared once the card consumes it.
+    var renamingJobID: UUID?
+
+    /// Drives the Undo/Redo menu items. `UndoManager` isn't observable, so we
+    /// mirror its state into these properties after every mutation.
+    let undoManager = UndoManager()
+    private(set) var canUndo = false
+    private(set) var canRedo = false
+    private(set) var undoTitle = "Undo"
+    private(set) var redoTitle = "Redo"
+
+    /// Tracks how many jobs were still active (queued/processing) on the previous
+    /// progress tick, so we can detect the moment a whole batch finishes.
+    private var lastActiveCount = 0
+
     init(processor: any BackgroundRemovalProcessor = MockProcessor()) {
         self.queue = ProcessingQueue(processor: processor)
     }
 
     // MARK: - Derived
-
-    var previewJob: Job? {
-        guard let id = previewJobID else { return nil }
-        return queue.jobs.first { $0.id == id }
-    }
 
     /// Jobs navigable in the preview overlay — selected jobs when multiple are
     /// selected, otherwise the full queue (including a single selected item).
@@ -52,6 +61,9 @@ final class AppModel {
     }
 
     var hasSelection: Bool { !selection.isEmpty }
+
+    /// The single selected job's id, or nil when zero or many are selected.
+    var singleSelection: UUID? { selection.count == 1 ? selection.first : nil }
 
     func isSelected(_ id: UUID) -> Bool { selection.contains(id) }
 
@@ -223,32 +235,103 @@ final class AppModel {
         }
     }
 
-    func remove(_ id: UUID) {
-        queue.removeJob(id)
-        if previewJobID == id { previewJobID = nil }
-        selection.remove(id)
-        if selectionAnchorID == id { selectionAnchorID = selection.first }
+    /// Delete a single job. Undoable (⌘Z restores it), matching Finder/Photos —
+    /// no confirmation dialog.
+    func delete(_ id: UUID) {
+        deleteJobs([id])
     }
 
-    func confirmRemove(_ id: UUID) {
-        guard confirmDeletion(count: 1) else { return }
-        remove(id)
-    }
-
-    func removeSelection() {
+    /// Delete the current selection. Undoable.
+    func deleteSelection() {
         guard !selection.isEmpty else { return }
-        if let preview = previewJobID, selection.contains(preview) { previewJobID = nil }
-        for id in selection { queue.removeJob(id) }
-        clearSelection()
+        deleteJobs(orderedIDs.filter { selection.contains($0) })
     }
 
-    func confirmRemoveSelection() {
-        guard !selection.isEmpty, confirmDeletion(count: selection.count) else { return }
-        removeSelection()
+    /// Capture the jobs (and their grid positions) about to be removed, delete
+    /// them, and register an Undo that restores them. The redo is registered
+    /// automatically when the Undo runs.
+    private func deleteJobs(_ ids: [UUID]) {
+        let removed: [(offset: Int, job: Job)] = ids.compactMap { id in
+            guard let idx = queue.jobs.firstIndex(where: { $0.id == id }) else { return nil }
+            return (offset: idx, job: queue.jobs[idx])
+        }
+        guard !removed.isEmpty else { return }
+        applyDelete(removed)
+        refreshUndoState()
+    }
+
+    private func applyDelete(_ removed: [(offset: Int, job: Job)]) {
+        let ids = Set(removed.map { $0.job.id })
+        for id in ids { queue.removeJob(id) }
+        QuickLookController.shared.close()
+        selection.subtract(ids)
+        if let anchor = selectionAnchorID, ids.contains(anchor) {
+            selectionAnchorID = selection.first
+        }
+        undoManager.registerUndo(withTarget: self) { model in
+            model.applyRestore(removed)
+        }
+        undoManager.setActionName(removed.count == 1 ? "Delete Image" : "Delete Images")
+    }
+
+    private func applyRestore(_ removed: [(offset: Int, job: Job)]) {
+        queue.restore(removed)
+        selection = Set(removed.map { $0.job.id })
+        selectionAnchorID = removed.first?.job.id
+        undoManager.registerUndo(withTarget: self) { model in
+            model.applyDelete(removed)
+        }
+        undoManager.setActionName(removed.count == 1 ? "Delete Image" : "Delete Images")
     }
 
     func rename(_ id: UUID, to newBaseName: String) {
+        guard let old = queue.jobs.first(where: { $0.id == id })?.fileName else { return }
         queue.rename(id, to: newBaseName)
+        guard let new = queue.jobs.first(where: { $0.id == id })?.fileName, new != old else { return }
+        registerRenameUndo(id: id, from: new, to: old)
+        undoManager.setActionName("Rename")
+        refreshUndoState()
+    }
+
+    private func registerRenameUndo(id: UUID, from current: String, to previous: String) {
+        undoManager.registerUndo(withTarget: self) { model in
+            model.queue.setFileName(id, previous)
+            model.registerRenameUndo(id: id, from: previous, to: current)
+            model.undoManager.setActionName("Rename")
+        }
+    }
+
+    /// Ask the focused card matching `id` to begin inline rename (Return key / menu).
+    func beginRename(_ id: UUID) {
+        renamingJobID = id
+    }
+
+    // MARK: - Undo / Redo
+
+    func performUndo() {
+        undoManager.undo()
+        refreshUndoState()
+    }
+
+    func performRedo() {
+        undoManager.redo()
+        refreshUndoState()
+    }
+
+    private func refreshUndoState() {
+        canUndo = undoManager.canUndo
+        canRedo = undoManager.canRedo
+        undoTitle = undoManager.canUndo ? "Undo \(undoManager.undoActionName)" : "Undo"
+        redoTitle = undoManager.canRedo ? "Redo \(undoManager.redoActionName)" : "Redo"
+    }
+
+    // MARK: - Share
+
+    /// File URLs for the active share target — selected finished jobs, or all
+    /// finished jobs when nothing relevant is selected. Used by `ShareLink`.
+    var shareURLs: [URL] {
+        let jobs = selectedDoneJobs.isEmpty ? queue.doneJobs : selectedDoneJobs
+        return jobs.compactMap { ExportService.stagedFileURL(for: $0) }
     }
 
     /// Files to drag out when the user starts dragging `job`. If the card is part
@@ -276,37 +359,35 @@ final class AppModel {
         return [job]
     }
 
-    // MARK: - Preview overlay
+    // MARK: - Quick Look preview
 
+    /// Open the system Quick Look panel focused on `id`, paging through the
+    /// previewable jobs (selection or the whole queue).
     func openPreview(_ id: UUID) {
-        guard queue.jobs.contains(where: { $0.id == id }) else { return }
-        previewJobID = id
+        let jobs = previewableJobs
+        guard let idx = jobs.firstIndex(where: { $0.id == id }) else { return }
+        presentQuickLook(jobs: jobs, startIndex: idx)
     }
 
-    func closePreview() { previewJobID = nil }
+    func closePreview() { QuickLookController.shared.close() }
 
-    /// Toggle Quick Look-style preview for the current selection.
+    /// Toggle Quick Look for the current selection (Space bar).
     func togglePreview() {
-        if previewJobID != nil {
-            closePreview()
+        if QuickLookController.shared.isVisible {
+            QuickLookController.shared.close()
         } else {
             openPreviewForSelection()
         }
     }
 
     func openPreviewForSelection() {
-        let jobs = previewableJobs
-        guard !jobs.isEmpty else { return }
-        previewJobID = jobs[0].id
+        presentQuickLook(jobs: previewableJobs, startIndex: 0)
     }
 
-    func movePreview(by delta: Int) {
-        let jobs = previewableJobs
-        guard !jobs.isEmpty, let current = previewJobID,
-              let idx = jobs.firstIndex(where: { $0.id == current })
-        else { return }
-        let next = min(max(0, idx + delta), jobs.count - 1)
-        previewJobID = jobs[next].id
+    private func presentQuickLook(jobs: [Job], startIndex: Int) {
+        let urls = jobs.compactMap { ExportService.previewFileURL(for: $0) }
+        guard !urls.isEmpty else { return }
+        QuickLookController.shared.present(urls: urls, startIndex: min(max(0, startIndex), urls.count - 1))
     }
 
     // MARK: - Export intents
@@ -329,22 +410,39 @@ final class AppModel {
         )
     }
 
+    /// Remove every job. Undoable — ⌘Z brings the whole batch back.
     func clear() {
-        queue.reset()
-        previewJobID = nil
-        clearSelection()
+        let removed = queue.jobs.enumerated().map { (offset: $0.offset, job: $0.element) }
+        guard !removed.isEmpty else { return }
+        applyDelete(removed)
+        undoManager.setActionName("Clear")
+        refreshUndoState()
     }
 
-    // MARK: - Destructive action confirmation
+    // MARK: - Batch progress (Dock + notifications)
 
-    private func confirmDeletion(count: Int) -> Bool {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = count == 1 ? "Delete this image?" : "Delete \(count) images?"
-        alert.informativeText = "This removes the image\(count == 1 ? "" : "s") from the current batch."
-        alert.addButton(withTitle: "Delete")
-        alert.addButton(withTitle: "Cancel")
-        return alert.runModal() == .alertFirstButtonReturn
+    /// Recompute Dock progress and fire a completion notification when a batch
+    /// finishes. Call whenever queue counts change.
+    func handleQueueProgress() {
+        let total = queue.jobs.count
+        let active = queue.queuedCount + queue.processingCount
+        let done = queue.doneJobs.count
+
+        if active > 0 {
+            let fraction = total > 0 ? Double(total - active) / Double(total) : 0
+            DockProgress.shared.update(progress: fraction, badge: active)
+        } else {
+            DockProgress.shared.clear()
+        }
+
+        // Transition from "work in flight" to "all settled" => batch finished.
+        if lastActiveCount > 0 && active == 0 && done > 0 {
+            NotificationService.shared.notifyBatchFinished(
+                done: done,
+                failed: queue.errorCount
+            )
+        }
+        lastActiveCount = active
     }
 }
 
