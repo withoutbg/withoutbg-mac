@@ -25,7 +25,7 @@ struct AboutView: View {
                 Text("Version \(version) (\(build))")
                     .font(.system(size: 12))
                     .foregroundStyle(WBGColors.textSecondary)
-                Text("Model: WBGNet OSS · Core ML fp16")
+                Text("Model: WBGNet OSS · Core ML fp32")
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(WBGColors.textTertiary)
             }

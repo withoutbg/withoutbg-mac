@@ -52,14 +52,17 @@ struct DropZoneView: View {
                 .foregroundStyle(WBGColors.textTertiary)
             Link("withoutBG Open Weights", destination: ProductLinks.shared.openWeights)
                 .foregroundStyle(WBGColors.textSecondary)
+                .underline()
             Text("·")
                 .foregroundStyle(WBGColors.textTertiary)
             Link("GitHub", destination: ProductLinks.shared.github)
                 .foregroundStyle(WBGColors.textSecondary)
+                .underline()
             Text("·")
                 .foregroundStyle(WBGColors.textTertiary)
             Link("License", destination: ProductLinks.shared.license)
                 .foregroundStyle(WBGColors.textSecondary)
+                .underline()
         }
         .font(.system(size: 11))
     }

@@ -3,19 +3,19 @@ import CoreML
 import Foundation
 
 /// Real, on-device background removal backed by the bundled WBGNet Core ML
-/// model (`wbgnet_oss_fp16.mlpackage`, ML Program, fp16, Neural Engine eligible).
+/// model (`wbgnet_oss_fp32.mlpackage`, ML Program, fp32, CPU + GPU).
 ///
 /// Pipeline mirrors `scripts/serve_wbgnet_coreml.py`:
-/// letterbox → tensor (1×3×1024×1024, [0,1] NCHW) → model → alpha
+/// letterbox → 1024×1024 RGB pixel buffer → model → alpha
 /// (1×1×1024×1024) → crop valid region → resize to source → composite cutout.
 ///
-/// The model is exported with `--input-kind tensor`, so the input is an
-/// `MLMultiArray` (not a `CVPixelBuffer`); normalization (`scale=1/255`) is
-/// internal to the graph.
+/// The model is exported with `--input-kind image`, so the input is a
+/// `CVPixelBuffer` (not an `MLMultiArray`); normalization (`scale=1/255`) and
+/// BGRA → RGB reordering are internal to Core ML's image preprocessing.
 final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Sendable {
     /// Resource name of the bundled model (Xcode compiles `.mlpackage` →
     /// `.mlmodelc` at build time).
-    static let modelName = "wbgnet_oss_fp16"
+    static let modelName = "wbgnet_oss_fp32"
     private static let canvas = 1024
     private static let inputName = "rgb"
     private static let outputName = "alpha"
@@ -50,7 +50,9 @@ final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Sendable {
             )
         }
         let config = MLModelConfiguration()
-        config.computeUnits = .all
+        // fp32 ops are not Neural Engine eligible; CPU + GPU matches the model's
+        // exported compute metadata.
+        config.computeUnits = .cpuAndGPU
         let model = try MLModel(contentsOf: url, configuration: config)
         cachedModel = model
         return model
@@ -62,13 +64,15 @@ final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Sendable {
         let start = Date()
         let model = try loadModel()
 
-        guard let (rgba, newW, newH) = ImageUtilities.letterbox(image, canvas: Self.canvas) else {
+        guard let (pixelBuffer, newW, newH) = ImageUtilities.letterboxPixelBuffer(
+            image,
+            canvas: Self.canvas
+        ) else {
             throw ProcessorError.invalidImage
         }
 
-        let inputArray = try Self.makeInputArray(rgba: rgba, canvas: Self.canvas)
         let provider = try MLDictionaryFeatureProvider(dictionary: [
-            Self.inputName: MLFeatureValue(multiArray: inputArray)
+            Self.inputName: MLFeatureValue(pixelBuffer: pixelBuffer)
         ])
 
         let output = try model.prediction(from: provider)
@@ -96,29 +100,6 @@ final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Sendable {
     }
 
     // MARK: - Tensor I/O
-
-    /// Pack the letterboxed RGBA buffer into a `(1, 3, canvas, canvas)` float32
-    /// NCHW tensor in `[0, 1]` (R channel first).
-    private static func makeInputArray(rgba: [UInt8], canvas: Int) throws -> MLMultiArray {
-        let array = try MLMultiArray(
-            shape: [1, 3, NSNumber(value: canvas), NSNumber(value: canvas)],
-            dataType: .float32
-        )
-        let ptr = array.dataPointer.bindMemory(to: Float32.self, capacity: array.count)
-        let plane = canvas * canvas
-        let inv: Float32 = 1.0 / 255.0
-        for y in 0..<canvas {
-            let row = y * canvas
-            for x in 0..<canvas {
-                let src = (row + x) * 4
-                let idx = row + x
-                ptr[idx] = Float32(rgba[src]) * inv             // R
-                ptr[plane + idx] = Float32(rgba[src + 1]) * inv // G
-                ptr[2 * plane + idx] = Float32(rgba[src + 2]) * inv // B
-            }
-        }
-        return array
-    }
 
     /// Crop the model's `(1, 1, canvas, canvas)` alpha output to the valid
     /// letterboxed region, then resize it to the source dimensions.

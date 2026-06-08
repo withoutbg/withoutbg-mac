@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreVideo
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
@@ -66,14 +67,15 @@ enum ImageUtilities {
 
     // MARK: - Letterbox (model input prep)
 
-    /// Letterbox `image` onto a `canvas`×`canvas` black square, anchored
-    /// top-left, preserving aspect ratio (longest side → `canvas`). Returns the
-    /// RGBA8 pixel buffer (row-major, top row first) plus the scaled content
-    /// size (`newW`, `newH`). Matches the WBGNet Core ML letterbox contract.
-    static func letterbox(
+    /// Letterbox `image` onto a `canvas`×`canvas` black square as a 32BGRA
+    /// `CVPixelBuffer`, anchored top-left, preserving aspect ratio (longest side
+    /// → `canvas`). Use for Core ML models exported with `--input-kind image`:
+    /// Core ML normalizes the uint8 pixels to `[0,1]` and reorders BGRA → RGB
+    /// internally. Returns the buffer plus the scaled content size.
+    static func letterboxPixelBuffer(
         _ image: CGImage,
         canvas: Int = Int(maxDimension)
-    ) -> (pixels: [UInt8], newW: Int, newH: Int)? {
+    ) -> (pixelBuffer: CVPixelBuffer, newW: Int, newH: Int)? {
         let w = image.width
         let h = image.height
         guard w > 0, h > 0, canvas > 0 else { return nil }
@@ -88,24 +90,50 @@ enum ImageUtilities {
             newH = max(1, Int((Double(h) * Double(canvas) / Double(w)).rounded()))
         }
 
-        var buffer = [UInt8](repeating: 0, count: canvas * canvas * 4)
+        let attrs: [CFString: Any] = [
+            kCVPixelBufferCGImageCompatibilityKey: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: true
+        ]
+        var pb: CVPixelBuffer?
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            canvas,
+            canvas,
+            kCVPixelFormatType_32BGRA,
+            attrs as CFDictionary,
+            &pb
+        )
+        guard status == kCVReturnSuccess, let pixelBuffer = pb else { return nil }
+
+        CVPixelBufferLockBaseAddress(pixelBuffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
+
+        guard let base = CVPixelBufferGetBaseAddress(pixelBuffer) else { return nil }
         let colorSpace = CGColorSpaceCreateDeviceRGB()
+        // 32BGRA = premultipliedFirst + little-endian byte order.
+        let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue
+            | CGBitmapInfo.byteOrder32Little.rawValue
         guard let ctx = CGContext(
-            data: &buffer,
+            data: base,
             width: canvas,
             height: canvas,
             bitsPerComponent: 8,
-            bytesPerRow: canvas * 4,
+            bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
             space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            bitmapInfo: bitmapInfo
         ) else {
             return nil
         }
+
+        // Fresh CVPixelBuffer memory is not guaranteed zeroed; paint the black
+        // padding explicitly before compositing the content.
+        ctx.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: canvas, height: canvas))
         ctx.interpolationQuality = .high
         // CGContext origin is bottom-left; draw at the top so the content lands
-        // in the first rows of the row-major buffer (top-left anchor).
+        // in the first rows of the buffer (top-left anchor).
         ctx.draw(image, in: CGRect(x: 0, y: canvas - newH, width: newW, height: newH))
-        return (buffer, newW, newH)
+        return (pixelBuffer, newW, newH)
     }
 
     /// Build a grayscale CGImage from a row-major 8-bit buffer.
