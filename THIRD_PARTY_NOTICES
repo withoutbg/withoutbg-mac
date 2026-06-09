@@ -1,0 +1,75 @@
+withoutBG for Mac — Third-Party Notices
+========================================
+
+This application bundles withoutBG Open Weights, a background-removal model
+distributed separately under the withoutBG Open Weights license. The model was
+developed using components subject to third-party licenses listed below.
+
+
+Meta DINOv3
+-----------
+
+withoutBG Open Weights is a derivative work of Meta DINOv3 model materials
+("DINO Materials"), including pretrained vision backbone weights used during
+model development.
+
+  Component:   DINOv3 vision foundation models (ViT / ConvNeXt backbones)
+  Copyright:   Copyright (c) Meta Platforms, Inc. and affiliates.
+  Repository:  https://github.com/facebookresearch/dinov3
+  Paper:       https://arxiv.org/abs/2508.10104
+  License:     DINOv3 License
+  License URL: https://ai.meta.com/resources/models-and-libraries/dinov3-license/
+  Full text:   https://github.com/facebookresearch/dinov3/blob/main/LICENSE.md
+
+Use of DINO Materials and derivative works thereof is governed by the DINOv3
+License. By using withoutBG Open Weights or this application, you agree to
+comply with those terms in addition to the withoutBG Open Weights license.
+
+Summary of key DINOv3 License conditions (not a substitute for the full
+Agreement):
+
+  - Redistribution of DINO Materials or derivative works must pass through the
+    DINOv3 License and include a copy of the Agreement with the distributed
+    materials.
+  - Use must comply with applicable laws, including trade-control and sanctions
+    regulations.
+  - Prohibited uses include military or warfare purposes, nuclear applications,
+    espionage, development or use of illegal weapons, and activities subject to
+    ITAR.
+  - Reverse engineering, decompilation, or discovery of underlying components
+    of the DINO Materials is not permitted.
+  - THE DINO MATERIALS ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.
+
+A copy of the DINOv3 License Agreement is included with withoutBG Open Weights
+model distributions. The full Agreement is also available at the License URL
+above.
+
+If you publish research performed using DINO Materials, you must acknowledge
+the use of DINO Materials in your publication. Suggested citation:
+
+  @misc{simeoni2025dinov3,
+    title={{DINOv3}},
+    author={Sim{\'e}oni, Oriane and Vo, Huy V. and Seitzer, Maximilian and
+      Baldassarre, Federico and Oquab, Maxime and Jose, Cijo and Khalidov,
+      Vasil and Szafraniec, Marc and Yi, Seungeun and
+      Ramamonjisoa, Micha{\"e}l and Massa, Francisco and Haziza, Daniel and
+      Wehrstedt, Luca and Wang, Jianyuan and Darcet, Timoth{\'e}e and
+      Moutakanni, Th{\'e}o and Sentana, Leonel and Roberts, Claire and
+      Vedaldi, Andrea and Tolan, Jamie and Brandt, John and Couprie, Camille
+      and Mairal, Julien and J{\'e}gou, Herv{\'e} and Labatut, Patrick and
+      Bojanowski, Piotr},
+    year={2025},
+    eprint={2508.10104},
+    archivePrefix={arXiv},
+    primaryClass={cs.CV},
+    url={https://arxiv.org/abs/2508.10104},
+  }
+
+
+withoutBG Open Weights
+----------------------
+
+  Component:   wbgnet_oss_fp32 (Core ML)
+  License:     withoutBG Open Weights License
+  License URL: https://withoutbg.com/open-weights-model/license
+  Project:     https://withoutbg.com/open-weights-model

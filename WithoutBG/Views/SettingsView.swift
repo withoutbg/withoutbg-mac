@@ -46,9 +46,6 @@ struct SettingsView: View {
                 Text("Runs locally on your Mac. Images are not uploaded.")
                     .font(.system(size: 12))
                     .foregroundStyle(WBGColors.textSecondary)
-
-                Link("Learn about the API", destination: ProductLinks.shared.api)
-                    .font(.system(size: 12))
             }
         }
         .formStyle(.grouped)

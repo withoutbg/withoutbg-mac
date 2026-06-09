@@ -10,6 +10,8 @@ struct ProductLinks: Decodable {
     let github: URL
     let license: URL
     let ossRepo: URL
+    let dinov3Repo: URL
+    let dinov3License: URL
 
     static let shared: ProductLinks = load()
 
@@ -28,7 +30,9 @@ struct ProductLinks: Decodable {
                 benchmarks: URL(string: "https://withoutbg.com/open-weights-model/results")!,
                 github: URL(string: "https://github.com/withoutbg/withoutbg")!,
                 license: URL(string: "https://withoutbg.com/open-weights-model/license")!,
-                ossRepo: URL(string: "https://github.com/withoutbg/withoutbg")!
+                ossRepo: URL(string: "https://github.com/withoutbg/withoutbg")!,
+                dinov3Repo: URL(string: "https://github.com/facebookresearch/dinov3")!,
+                dinov3License: URL(string: "https://ai.meta.com/resources/models-and-libraries/dinov3-license/")!
             )
         }
         return decoded
