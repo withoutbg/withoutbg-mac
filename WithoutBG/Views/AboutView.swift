@@ -49,6 +49,17 @@ struct AboutView: View {
                     .foregroundStyle(WBGColors.accent)
             }
             .font(.system(size: 12, weight: .medium))
+
+            Link(destination: ProductLinks.shared.support) {
+                HStack(spacing: 5) {
+                    Image(systemName: "heart.fill")
+                        .foregroundStyle(.pink)
+                    Text("Support this project")
+                }
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(WBGColors.textSecondary)
+            }
+            .buttonStyle(.plain)
         }
         .padding(28)
         .frame(width: 400)

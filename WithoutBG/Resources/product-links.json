@@ -5,6 +5,7 @@
   "benchmarks": "https://withoutbg.com/open-weights-model/results",
   "github": "https://github.com/withoutbg/withoutbg",
   "license": "https://withoutbg.com/open-weights-model/license",
+  "support": "https://withoutbg.com/open-weights-model/support",
   "ossRepo": "https://github.com/withoutbg/withoutbg",
   "dinov3Repo": "https://github.com/facebookresearch/dinov3",
   "dinov3License": "https://ai.meta.com/resources/models-and-libraries/dinov3-license/"

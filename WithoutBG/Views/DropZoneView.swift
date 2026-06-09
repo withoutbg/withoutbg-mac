@@ -9,8 +9,25 @@ struct DropZoneView: View {
     var body: some View {
         VStack(spacing: 40) {
             dropZone
-            servingLine
+            VStack(spacing: 12) {
+                servingLine
+                supportLine
+            }
         }
+    }
+
+    private var supportLine: some View {
+        Link(destination: ProductLinks.shared.support) {
+            HStack(spacing: 5) {
+                Image(systemName: "heart.fill")
+                    .foregroundStyle(.pink)
+                Text("Support this project")
+                    .underline()
+            }
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(WBGColors.textSecondary)
+        }
+        .buttonStyle(.plain)
     }
 
     private var dropZone: some View {
