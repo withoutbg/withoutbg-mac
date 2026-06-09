@@ -25,12 +25,12 @@ struct AboutView: View {
                 Text("Version \(version) (\(build))")
                     .font(.system(size: 12))
                     .foregroundStyle(WBGColors.textSecondary)
-                Text("Model: WBGNet OSS · Core ML fp32")
+                Text("Model: withoutBG Open Weights · Core ML fp32")
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(WBGColors.textTertiary)
             }
 
-            Text("This app runs withoutBG OSS locally on your Mac.")
+            Text("This app runs withoutBG Open Weights locally on your Mac.")
                 .font(.system(size: 12))
                 .foregroundStyle(WBGColors.textSecondary)
                 .multilineTextAlignment(.center)

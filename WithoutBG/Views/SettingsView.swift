@@ -47,16 +47,6 @@ struct SettingsView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(WBGColors.textSecondary)
 
-                Toggle(isOn: .constant(false)) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Use hosted API for higher quality")
-                        Text("Coming soon")
-                            .font(.system(size: 11))
-                            .foregroundStyle(WBGColors.textTertiary)
-                    }
-                }
-                .disabled(true)
-
                 Link("Learn about the API", destination: ProductLinks.shared.api)
                     .font(.system(size: 12))
             }

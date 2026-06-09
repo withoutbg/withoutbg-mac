@@ -1,8 +1,8 @@
 # withoutBG for Mac
 
-A free, private, native macOS app for background removal, powered by **withoutBG OSS**. Images are processed locally on your Mac — nothing is uploaded.
+A free, private, native macOS app for background removal, powered by **withoutBG Open Weights**. Images are processed locally on your Mac — nothing is uploaded.
 
-> Background removal runs on-device via the bundled **WBGNet OSS** Core ML model (`wbgnet_oss_fp32.mlpackage`, fp32, CPU + GPU). A `MockProcessor` is still available behind the same `BackgroundRemovalProcessor` protocol for running the UI without the model.
+> Background removal runs on-device via the bundled **withoutBG Open Weights** Core ML model (`wbgnet_oss_fp32.mlpackage`, fp32, CPU + GPU). A `MockProcessor` is still available behind the same `BackgroundRemovalProcessor` protocol for running the UI without the model.
 
 ## Features
 

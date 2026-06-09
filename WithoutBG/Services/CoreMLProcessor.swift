@@ -2,7 +2,7 @@ import CoreGraphics
 import CoreML
 import Foundation
 
-/// Real, on-device background removal backed by the bundled WBGNet Core ML
+/// Real, on-device background removal backed by the bundled withoutBG Open Weights Core ML
 /// model (`wbgnet_oss_fp32.mlpackage`, ML Program, fp32, CPU + GPU).
 ///
 /// Pipeline mirrors `scripts/serve_wbgnet_coreml.py`:

@@ -31,7 +31,7 @@ targets:
       path: WithoutBG/Info.plist
       properties:
         LSApplicationCategoryType: public.app-category.photography
-        NSHumanReadableCopyright: "This app runs withoutBG OSS locally on your Mac."
+        NSHumanReadableCopyright: "This app runs withoutBG Open Weights locally on your Mac."
         NSCameraUsageDescription: "withoutBG uses Continuity Camera to import photos from a nearby iPhone or iPad."
         NSServices:
           - NSMenuItem:

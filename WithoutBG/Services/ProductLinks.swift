@@ -23,11 +23,11 @@ struct ProductLinks: Decodable {
             // resource is missing.
             return ProductLinks(
                 website: URL(string: "https://withoutbg.com")!,
-                openWeights: URL(string: "https://withoutbg.com/open-weight-model")!,
-                api: URL(string: "https://withoutbg.com/docs/api-model")!,
-                benchmarks: URL(string: "https://withoutbg.com/open-weight-model/results")!,
+                openWeights: URL(string: "https://withoutbg.com/open-weights-model")!,
+                api: URL(string: "https://withoutbg.com/api-model")!,
+                benchmarks: URL(string: "https://withoutbg.com/open-weights-model/results")!,
                 github: URL(string: "https://github.com/withoutbg/withoutbg")!,
-                license: URL(string: "https://withoutbg.com/open-weight-model/license")!,
+                license: URL(string: "https://withoutbg.com/open-weights-model/license")!,
                 ossRepo: URL(string: "https://github.com/withoutbg/withoutbg")!
             )
         }

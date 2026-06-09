@@ -23,7 +23,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>withoutBG uses Continuity Camera to import photos from a nearby iPhone or iPad.</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>This app runs withoutBG OSS locally on your Mac.</string>
+	<string>This app runs withoutBG Open Weights locally on your Mac.</string>
 	<key>NSServices</key>
 	<array>
 		<dict>
