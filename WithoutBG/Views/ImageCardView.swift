@@ -123,7 +123,7 @@ struct ImageCardView: View {
             if job.status == .queued { queuedBadge }
             if job.status == .error { errorOverlay }
         }
-        .aspectRatio(job.aspectRatio ?? 1, contentMode: .fit)
+        .aspectRatio(WBGGridSpace.thumbnailAspectRatio, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .clipped()
     }
@@ -205,19 +205,19 @@ struct ImageCardView: View {
     @ViewBuilder
     private var contextMenu: some View {
         if model.selection.count > 1, isSelected {
-            Button("Preview") { model.openPreviewForSelection() }
             if !model.selectedDoneJobs.isEmpty {
+                Button("Preview") { model.openPreviewForSelection() }
                 Button("Download…") { model.downloadSelection() }
                 Button("Copy") { model.copySelection() }
                 ShareLink(items: model.shareURLs) {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
+                Divider()
             }
-            Divider()
             Button("Delete", role: .destructive) { model.deleteSelection() }
         } else {
-            Button("Preview") { model.openPreview(job.id) }
             if isDone {
+                Button("Preview") { model.openPreview(job.id) }
                 Button("Download…") { model.download(job) }
                 Button("Copy") { model.copy(job) }
                 if let url = ExportService.stagedFileURL(for: job) {

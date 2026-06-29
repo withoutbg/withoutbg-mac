@@ -16,15 +16,24 @@ struct ProductLinks: Decodable {
 
     static let shared: ProductLinks = load()
 
+    private enum UTM {
+        static let source = "withoutbg-mac-desktop"
+        static let medium = "mac-app"
+        static let campaign = "in-app-links"
+    }
+
     private static func load() -> ProductLinks {
-        guard
+        let links: ProductLinks
+        if
             let url = Bundle.main.url(forResource: "product-links", withExtension: "json"),
             let data = try? Data(contentsOf: url),
             let decoded = try? JSONDecoder().decode(ProductLinks.self, from: data)
-        else {
+        {
+            links = decoded
+        } else {
             // Fallback mirrors the bundled JSON so the app never crashes if the
             // resource is missing.
-            return ProductLinks(
+            links = ProductLinks(
                 website: URL(string: "https://withoutbg.com")!,
                 openWeights: URL(string: "https://withoutbg.com/open-weights-model")!,
                 api: URL(string: "https://withoutbg.com/api-model")!,
@@ -37,6 +46,35 @@ struct ProductLinks: Decodable {
                 dinov3License: URL(string: "https://ai.meta.com/resources/models-and-libraries/dinov3-license/")!
             )
         }
-        return decoded
+        return links.taggedForAnalytics()
+    }
+
+    private func taggedForAnalytics() -> ProductLinks {
+        ProductLinks(
+            website: Self.withUTM(website),
+            openWeights: Self.withUTM(openWeights),
+            api: Self.withUTM(api),
+            benchmarks: Self.withUTM(benchmarks),
+            github: github,
+            license: Self.withUTM(license),
+            support: Self.withUTM(support),
+            ossRepo: ossRepo,
+            dinov3Repo: dinov3Repo,
+            dinov3License: dinov3License
+        )
+    }
+
+    private static func withUTM(_ url: URL) -> URL {
+        guard url.host?.hasSuffix("withoutbg.com") == true else { return url }
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
+
+        var queryItems = components.queryItems ?? []
+        queryItems.append(contentsOf: [
+            URLQueryItem(name: "utm_source", value: UTM.source),
+            URLQueryItem(name: "utm_medium", value: UTM.medium),
+            URLQueryItem(name: "utm_campaign", value: UTM.campaign),
+        ])
+        components.queryItems = queryItems
+        return components.url ?? url
     }
 }

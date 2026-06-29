@@ -117,26 +117,14 @@ final class ProcessingQueue {
         guard let before = job(jobID)?.beforeImage else { return }
         patch(jobID) { $0.status = .processing }
 
-        // Resize off the main thread before running inference, then free the
-        // full-resolution original so the session doesn't accumulate it for
-        // every image in a 20-card batch.
-        let (prepared, aspect) = await Task.detached(priority: .userInitiated) {
-            ImageUtilities.resized(before)
-        }.value
-
-        patch(jobID) {
-            $0.preparedImage = prepared
-            $0.aspectRatio = aspect
-            $0.beforeImage = nil   // free the full-res original
-        }
-
         do {
-            let result = try await processor.process(preparedImage: prepared)
+            let result = try await processor.process(preparedImage: before)
             patch(jobID) {
                 $0.alphaMatte = result.alphaMatte
                 $0.processedImage = result.processed
                 $0.latencyMs = result.latencyMs
                 $0.status = .done
+                $0.beforeImage = nil
             }
             completedCount += 1
 

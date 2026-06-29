@@ -5,6 +5,8 @@ import SwiftUI
 /// per-card frames agree.
 enum WBGGridSpace {
     static let name = "wbgGrid"
+    /// Uniform square thumbnails — matches Photos / Finder icon grids.
+    static let thumbnailAspectRatio: CGFloat = 1
 }
 
 /// Batches per-card geometry reports so marquee hit-testing updates at most
@@ -175,7 +177,11 @@ struct QueueGridView: View {
         case .downArrow:
             model.moveSelection(by: columnCount, extend: extend); return .handled
         case .space:
-            model.togglePreview(); return .handled
+            if model.canPreviewSelection {
+                model.togglePreview()
+                return .handled
+            }
+            return .ignored
         case .return:
             // Finder convention: Return on a single selection starts a rename.
             if let id = model.singleSelection {
@@ -229,7 +235,8 @@ private struct AddMoreTile: View {
                         .foregroundStyle(hovering ? WBGColors.accent : WBGColors.textSecondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .aspectRatio(1, contentMode: .fill)
+                .aspectRatio(WBGGridSpace.thumbnailAspectRatio, contentMode: .fit)
+                .frame(maxWidth: .infinity)
 
                 // Match ImageCardView footer height so the tile aligns with cards.
                 Color.clear.frame(height: 30)

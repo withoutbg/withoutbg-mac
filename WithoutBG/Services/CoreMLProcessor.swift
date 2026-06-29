@@ -3,19 +3,15 @@ import CoreML
 import Foundation
 
 /// Real, on-device background removal backed by the bundled withoutBG Open Weights Core ML
-/// model (`wbgnet_oss_fp32.mlpackage`, ML Program, fp32, CPU + GPU).
+/// model (`wbgnet_oss.mlpackage`, ML Program, fp32).
 ///
 /// Pipeline mirrors `scripts/serve_wbgnet_coreml.py`:
-/// letterbox → 1024×1024 RGB pixel buffer → model → alpha
+/// letterbox → 1024×1024 NCHW float32 tensor in `[0, 1]` → model → alpha
 /// (1×1×1024×1024) → crop valid region → resize to source → composite cutout.
-///
-/// The model is exported with `--input-kind image`, so the input is a
-/// `CVPixelBuffer` (not an `MLMultiArray`); normalization (`scale=1/255`) and
-/// BGRA → RGB reordering are internal to Core ML's image preprocessing.
 final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Sendable {
     /// Resource name of the bundled model (Xcode compiles `.mlpackage` →
     /// `.mlmodelc` at build time).
-    static let modelName = "wbgnet_oss_fp32"
+    static let modelName = "wbgnet_oss"
     private static let canvas = 1024
     private static let inputName = "rgb"
     private static let outputName = "alpha"
@@ -50,9 +46,7 @@ final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Sendable {
             )
         }
         let config = MLModelConfiguration()
-        // fp32 ops are not Neural Engine eligible; CPU + GPU matches the model's
-        // exported compute metadata.
-        config.computeUnits = .cpuAndGPU
+        config.computeUnits = .all
         let model = try MLModel(contentsOf: url, configuration: config)
         cachedModel = model
         return model
@@ -64,7 +58,7 @@ final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Sendable {
         let start = Date()
         let model = try loadModel()
 
-        guard let (pixelBuffer, newW, newH) = ImageUtilities.letterboxPixelBuffer(
+        guard let (tensor, newW, newH) = ImageUtilities.letterboxTensor(
             image,
             canvas: Self.canvas
         ) else {
@@ -72,7 +66,7 @@ final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Sendable {
         }
 
         let provider = try MLDictionaryFeatureProvider(dictionary: [
-            Self.inputName: MLFeatureValue(pixelBuffer: pixelBuffer)
+            Self.inputName: MLFeatureValue(multiArray: tensor)
         ])
 
         let output = try model.prediction(from: provider)

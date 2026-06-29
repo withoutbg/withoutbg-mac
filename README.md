@@ -2,7 +2,7 @@
 
 A free, private, native macOS app for background removal, powered by **withoutBG Open Weights**. Images are processed locally on your Mac — nothing is uploaded.
 
-> Background removal runs on-device via the bundled **withoutBG Open Weights** Core ML model (`wbgnet_oss_fp32.mlpackage`, fp32, CPU + GPU). A `MockProcessor` is still available behind the same `BackgroundRemovalProcessor` protocol for running the UI without the model.
+> Background removal runs on-device via the bundled **withoutBG Open Weights** Core ML model (`wbgnet_oss.mlpackage`, fp32). A `MockProcessor` is still available behind the same `BackgroundRemovalProcessor` protocol for running the UI without the model.
 
 ## Features
 
@@ -63,14 +63,14 @@ WithoutBG/
 The shipping processor is `CoreMLProcessor`, which:
 
 1. Letterboxes the prepared image onto a 1024×1024 black canvas (top-left).
-2. Wraps it in a 1024×1024 RGB `CVPixelBuffer` (the model normalizes uint8 → `[0, 1]` internally).
-3. Runs the bundled `wbgnet_oss_fp32` model (`MLModelConfiguration.computeUnits = .cpuAndGPU`).
+2. Builds a `(1, 3, 1024, 1024)` float32 NCHW tensor in `[0, 1]`.
+3. Runs the bundled `wbgnet_oss` model (`MLModelConfiguration.computeUnits = .all`).
 4. Crops the `(1, 1, 1024, 1024)` alpha to the valid region and resizes it back
    to the source dimensions, then composites the cutout.
 
 To run the UI without the model, swap one line in `WithoutBGApp.swift`:
 `AppModel(processor: MockProcessor())`. No views change.
 
-> The `.mlpackage` (~540 MB) lives at `WithoutBG/Resources/wbgnet_oss_fp32.mlpackage`
+> The `.mlpackage` (~540 MB) lives at `WithoutBG/Resources/wbgnet_oss.mlpackage`
 > and is compiled to `.mlmodelc` at build time. It is **not** git-ignored, so
 > consider Git LFS (or excluding it) before committing.

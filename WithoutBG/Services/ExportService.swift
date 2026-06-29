@@ -86,19 +86,21 @@ enum ExportService {
 
     // MARK: - Quick Look
 
-    /// A file URL suitable for the system Quick Look panel, named after the job
-    /// so the panel shows the right title. Finished jobs hard-link the already
-    /// staged transparent PNG (no re-encode); in-progress jobs encode whatever
-    /// image is currently available.
+    /// A file URL for the system Quick Look panel. Only finished cutouts are
+    /// previewable — the URL hard-links the staged transparent PNG (no re-encode).
     static func previewFileURL(for job: Job) -> URL? {
+        guard job.status == .done else { return nil }
+
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("wbg-preview", isDirectory: true)
             .appendingPathComponent(job.id.uuidString, isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appendingPathComponent("\(job.baseName).png")
 
-        if job.status == .done, let staged = job.stagedURL {
-            if FileManager.default.fileExists(atPath: url.path) { return url }
+        if let staged = job.stagedURL {
+            if FileManager.default.fileExists(atPath: url.path) {
+                try? FileManager.default.removeItem(at: url)
+            }
             do {
                 try FileManager.default.linkItem(at: staged, to: url)
                 return url
@@ -107,17 +109,13 @@ enum ExportService {
             }
         }
 
-        let image = job.status == .done
-            ? job.processedImage
-            : (job.preparedImage ?? job.thumbnail ?? job.beforeImage)
-        guard let image, let data = ImageUtilities.pngData(from: image) else {
-            return job.stagedURL
-        }
+        guard let image = job.processedImage,
+              let data = ImageUtilities.pngData(from: image) else { return nil }
         do {
             try data.write(to: url)
             return url
         } catch {
-            return job.stagedURL
+            return nil
         }
     }
 

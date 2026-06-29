@@ -47,6 +47,18 @@ struct SettingsView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(WBGColors.textSecondary)
             }
+
+            Section("Support") {
+                Link(destination: ProductLinks.shared.support) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "heart.fill")
+                            .foregroundStyle(.pink)
+                        Text("Support this project")
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(WBGColors.textSecondary)
+                }
+            }
         }
         .formStyle(.grouped)
         .frame(width: 460, height: 420)

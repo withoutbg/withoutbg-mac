@@ -8,10 +8,8 @@ struct Job: Identifiable {
     var fileName: String
     var status: JobStatus
 
-    /// Full-resolution original, held only until `preparedImage` is ready,
-    /// then nilled to keep memory low.
+    /// Full-resolution original, held until processing completes, then nilled.
     var beforeImage: CGImage?
-    /// Resized working copy (max 1024px longest side), set after preparation.
     var preparedImage: CGImage?
     /// Transparent PNG cutout, set when done.
     var processedImage: CGImage?

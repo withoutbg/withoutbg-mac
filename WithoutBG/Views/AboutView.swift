@@ -71,7 +71,7 @@ struct AboutView: View {
 
     private var attributionLine: some View {
         VStack(spacing: 4) {
-            Text("withoutBG Open Weights was developed using Meta DINOv3 as an upstream model.")
+            Text("Built with DINOv3. withoutBG Open Weights also incorporates Depth Anything V2 and IS-Net (Apache-2.0).")
                 .font(.system(size: 11))
                 .foregroundStyle(WBGColors.textTertiary)
                 .multilineTextAlignment(.center)

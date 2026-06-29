@@ -46,11 +46,15 @@ final class AppModel {
 
     // MARK: - Derived
 
-    /// Jobs navigable in the preview overlay — selected jobs when multiple are
-    /// selected, otherwise the full queue (including a single selected item).
+    /// Finished jobs with a cutout — the only items Quick Look can show.
     var previewableJobs: [Job] {
-        let selected = queue.jobs.filter { selection.contains($0.id) }
-        return selected.count > 1 ? selected : queue.jobs
+        queue.jobs.filter { $0.status == .done && $0.processedImage != nil }
+    }
+
+    /// Whether the current selection (or the full queue when nothing is selected)
+    /// has at least one finished cutout to preview.
+    var canPreviewSelection: Bool {
+        !previewJobsForSelection().jobs.isEmpty
     }
 
     var canExportAll: Bool { queue.doneJobs.count >= 2 }
@@ -361,9 +365,10 @@ final class AppModel {
 
     // MARK: - Quick Look preview
 
-    /// Open the system Quick Look panel focused on `id`, paging through the
-    /// previewable jobs (selection or the whole queue).
+    /// Open the system Quick Look panel focused on `id`, paging through finished
+    /// cutouts (selection or the whole queue).
     func openPreview(_ id: UUID) {
+        guard previewableJobs.contains(where: { $0.id == id }) else { return }
         let jobs = previewableJobs
         guard let idx = jobs.firstIndex(where: { $0.id == id }) else { return }
         presentQuickLook(jobs: jobs, startIndex: idx)
@@ -381,7 +386,41 @@ final class AppModel {
     }
 
     func openPreviewForSelection() {
-        presentQuickLook(jobs: previewableJobs, startIndex: 0)
+        let bundle = previewJobsForSelection()
+        guard !bundle.jobs.isEmpty else { return }
+        presentQuickLook(jobs: bundle.jobs, startIndex: bundle.startIndex)
+    }
+
+    private struct PreviewBundle {
+        let jobs: [Job]
+        let startIndex: Int
+    }
+
+    /// Jobs to page through in Quick Look, and which item to focus first.
+    private func previewJobsForSelection() -> PreviewBundle {
+        let all = previewableJobs
+        guard !all.isEmpty else { return PreviewBundle(jobs: [], startIndex: 0) }
+
+        let selectedDone = all.filter { selection.contains($0.id) }
+        if selectedDone.count > 1 {
+            let focusID = selectionAnchorID ?? selection.first
+            let idx = focusID.flatMap { id in selectedDone.firstIndex(where: { $0.id == id }) } ?? 0
+            return PreviewBundle(jobs: selectedDone, startIndex: idx)
+        }
+
+        let focusID = selectionAnchorID ?? selection.first
+        if let focusID, selection.contains(focusID) {
+            guard let idx = all.firstIndex(where: { $0.id == focusID }) else {
+                return PreviewBundle(jobs: [], startIndex: 0)
+            }
+            return PreviewBundle(jobs: all, startIndex: idx)
+        }
+
+        if selection.isEmpty {
+            return PreviewBundle(jobs: all, startIndex: 0)
+        }
+
+        return PreviewBundle(jobs: [], startIndex: 0)
     }
 
     private func presentQuickLook(jobs: [Job], startIndex: Int) {

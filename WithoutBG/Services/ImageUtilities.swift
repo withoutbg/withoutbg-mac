@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreML
 import CoreVideo
 import Foundation
 import ImageIO
@@ -134,6 +135,45 @@ enum ImageUtilities {
         // in the first rows of the buffer (top-left anchor).
         ctx.draw(image, in: CGRect(x: 0, y: canvas - newH, width: newW, height: newH))
         return (pixelBuffer, newW, newH)
+    }
+
+    /// Letterbox `image` onto a `canvas`×`canvas` black square as an NCHW
+    /// float32 `MLMultiArray` in `[0, 1]` (shape `[1, 3, canvas, canvas]`).
+    /// Use for Core ML models exported with `--input-kind tensor`.
+    static func letterboxTensor(
+        _ image: CGImage,
+        canvas: Int = Int(maxDimension)
+    ) -> (tensor: MLMultiArray, newW: Int, newH: Int)? {
+        guard let (pixelBuffer, newW, newH) = letterboxPixelBuffer(image, canvas: canvas) else {
+            return nil
+        }
+        guard let array = try? MLMultiArray(
+            shape: [1, 3, canvas as NSNumber, canvas as NSNumber],
+            dataType: .float32
+        ) else {
+            return nil
+        }
+
+        CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
+
+        guard let base = CVPixelBufferGetBaseAddress(pixelBuffer) else { return nil }
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
+        let src = base.assumingMemoryBound(to: UInt8.self)
+        let out = array.dataPointer.bindMemory(to: Float32.self, capacity: 3 * canvas * canvas)
+        let planeSize = canvas * canvas
+
+        for y in 0..<canvas {
+            let row = src.advanced(by: y * bytesPerRow)
+            for x in 0..<canvas {
+                let px = x * 4
+                let idx = y * canvas + x
+                out[idx] = Float(row[px + 2]) / 255
+                out[planeSize + idx] = Float(row[px + 1]) / 255
+                out[2 * planeSize + idx] = Float(row[px]) / 255
+            }
+        }
+        return (array, newW, newH)
     }
 
     /// Build a grayscale CGImage from a row-major 8-bit buffer.
