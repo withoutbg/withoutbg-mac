@@ -1,3 +1,1 @@
-WithoutBG/Resources/wbgnet_oss.mlpackage/Data/com.apple.CoreML/weights/weight.bin filter=lfs diff=lfs merge=lfs -text
-WithoutBG/Resources/wbgnet_oss_fp16.mlpackage/Data/com.apple.CoreML/weights/weight.bin filter=lfs diff=lfs merge=lfs -text
-WithoutBG/Resources/wbgnet_oss_fp32.mlpackage/Data/com.apple.CoreML/weights/weight.bin filter=lfs diff=lfs merge=lfs -text
+Packages/WithoutBGCore/Sources/WithoutBGCore/Resources/wbgnet_oss.mlpackage/Data/com.apple.CoreML/weights/weight.bin filter=lfs diff=lfs merge=lfs -text

@@ -8,18 +8,31 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MARKETING_VERSION: "1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "1.1"
+    CURRENT_PROJECT_VERSION: "2"
     DEVELOPMENT_TEAM: "YWA9SAG8YK"
     CODE_SIGN_STYLE: Automatic
     SWIFT_STRICT_CONCURRENCY: complete
+
+packages:
+  WithoutBGCore:
+    path: Packages/WithoutBGCore
+  Vapor:
+    url: https://github.com/vapor/vapor.git
+    from: "4.0.0"
+
 targets:
   WithoutBG:
     type: application
     platform: macOS
     deploymentTarget: "14.0"
     sources:
-      - path: WithoutBG
+      - path: Apps/WithoutBG
+    dependencies:
+      - package: WithoutBGCore
+        product: WithoutBGCore
+      - package: Vapor
+        product: Vapor
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.withoutbg.mac
@@ -28,8 +41,10 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         COMBINE_HIDPI_IMAGES: YES
     info:
-      path: WithoutBG/Info.plist
+      path: Apps/WithoutBG/Info.plist
       properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSApplicationCategoryType: public.app-category.photography
         NSHumanReadableCopyright: "This app runs withoutBG Open Weights locally on your Mac."
         NSCameraUsageDescription: "withoutBG uses Continuity Camera to import photos from a nearby iPhone or iPad."
@@ -41,18 +56,66 @@ targets:
             NSSendFileTypes:
               - public.image
     entitlements:
-      path: WithoutBG/WithoutBG.entitlements
+      path: Apps/WithoutBG/WithoutBG.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-write: true
         com.apple.security.files.downloads.read-write: true
         com.apple.security.device.camera: true
+        com.apple.security.network.client: true
+        com.apple.security.network.server: true
+
+  WithoutBGServer:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Apps/WithoutBGServer
+      - path: Apps/WithoutBG/Server
+      - path: Apps/WithoutBG/Views/ActivityListView.swift
+      - path: Apps/WithoutBG/Views/ThirdPartyNoticesView.swift
+      - path: Apps/WithoutBG/Design/WBGColors.swift
+    dependencies:
+      - package: WithoutBGCore
+        product: WithoutBGCore
+      - package: Vapor
+        product: Vapor
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.withoutbg.mac.server
+        PRODUCT_NAME: WithoutBG Server
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_HARDENED_RUNTIME: YES
+        COMBINE_HIDPI_IMAGES: YES
+    info:
+      path: Apps/WithoutBGServer/Info.plist
+      properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSApplicationCategoryType: public.app-category.developer-tools
+        NSHumanReadableCopyright: "WithoutBG Server runs withoutBG Open Weights locally on your Mac."
+        LSUIElement: true
+        ITSAppUsesNonExemptEncryption: false
+    entitlements:
+      path: Apps/WithoutBGServer/WithoutBGServer.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.server: true
 
 schemes:
   WithoutBG:
     build:
       targets:
         WithoutBG: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+
+  WithoutBGServer:
+    build:
+      targets:
+        WithoutBGServer: all
     run:
       config: Debug
     archive:

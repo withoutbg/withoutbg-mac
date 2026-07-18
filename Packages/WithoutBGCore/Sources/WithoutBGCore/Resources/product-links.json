@@ -1,0 +1,22 @@
+{
+  "website": "https://withoutbg.com",
+  "openWeights": "https://withoutbg.com/open-model",
+  "api": "https://withoutbg.com/pro-model",
+  "apiSignup": "https://withoutbg.com/signup",
+  "documentation": "https://withoutbg.com/docs",
+  "benchmarks": "https://withoutbg.com/open-model/results",
+  "github": "https://github.com/withoutbg/withoutbg",
+  "license": "https://withoutbg.com/open-model/license",
+  "support": "https://withoutbg.com/open-model/support",
+  "gpuFund": "https://withoutbg.com/open-model/support/gpu-fund",
+  "enterprise": "https://withoutbg.com/contact",
+  "productUpdates": "https://api.withoutbg.com/updates",
+  "privacyPolicy": "https://withoutbg.com/privacy",
+  "ossRepo": "https://github.com/withoutbg/withoutbg",
+  "dinov3Repo": "https://github.com/facebookresearch/dinov3",
+  "dinov3License": "https://ai.meta.com/resources/models-and-libraries/dinov3-license/",
+  "macApp": "https://withoutbg.com/mac",
+  "localAPIDocs": "https://withoutbg.com/docs/open-model/local-api",
+  "localAPIOpenAPI": "https://withoutbg.com/openapi/local-api.json",
+  "localAPIGitHub": "https://github.com/withoutbg/withoutbg-mac"
+}

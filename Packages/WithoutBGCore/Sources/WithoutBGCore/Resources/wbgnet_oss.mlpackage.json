@@ -1,0 +1,37 @@
+{
+  "canvas_size": 1024,
+  "precision": "fp32",
+  "format": "mlprogram",
+  "input_kind": "tensor",
+  "compute_units": "all",
+  "deployment_target": "macOS14",
+  "load_recipe": "coremltools.models.MLModel(path) / Swift MLModel(contentsOf:)",
+  "variant": "oss",
+  "depth_variant": "dav2s",
+  "convnext_size": "base",
+  "matting_input_size": 448,
+  "refiner": false,
+  "model_version": "10.0.0",
+  "input_name": "rgb",
+  "output_name": "alpha",
+  "input_dtype": "float32",
+  "input_shape": [
+    1,
+    3,
+    1024,
+    1024
+  ],
+  "output_shape": [
+    1,
+    1,
+    1024,
+    1024
+  ],
+  "size_mb": 454.69,
+  "sha256": "8c6d653b3f37f8cbdf4eb0e9e3e994a7f6b4368c7015d5e711f61fe6988cd1a4",
+  "strip_metadata": true,
+  "obfuscate": true,
+  "license_url": "https://withoutbg.com/open-model/license",
+  "mae": 0.0001783192128641531,
+  "max_abs": 0.37241894006729126
+}

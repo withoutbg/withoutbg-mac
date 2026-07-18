@@ -30,7 +30,7 @@ cd "$ROOT"
 SCHEME="WithoutBG"
 APP_NAME="withoutBG"
 BUILD_DIR="$ROOT/build"
-ARCHIVE_PATH="$BUILD_DIR/WithoutBG.xcarchive"
+ARCHIVE_PATH="$BUILD_DIR/${SCHEME}.xcarchive"
 EXPORT_DIR="$BUILD_DIR/export"
 DIST_DIR="$ROOT/dist"
 EXPORT_OPTIONS_TEMPLATE="$ROOT/scripts/ExportOptions-direct.plist"
@@ -40,6 +40,7 @@ SKIP_ARCHIVE=0
 SKIP_NOTARIZE=0
 SKIP_DMG=0
 APP_STORE=0
+BUILD_SERVER=0
 
 usage() {
   cat <<'EOF'
@@ -56,13 +57,14 @@ Prerequisites:
       ASC_KEY_ID + ASC_ISSUER_ID + ASC_KEY_PATH (App Store Connect API key)
 
 Usage:
-  ./scripts/release.sh                  # DMG for direct download
+  ./scripts/release.sh                  # withoutBG DMG (primary)
+  ./scripts/release.sh --server           # WithoutBG Server headless DMG
   ./scripts/release.sh --app-store      # upload to App Store Connect
   ./scripts/release.sh --skip-notarize  # build + DMG only (local testing)
 
 EOF
   echo "Options:"
-  echo "  --app-store       Export for App Store Connect (no DMG / notarization)"
+  echo "  --server          Build WithoutBG Server (headless) instead of desktop"
   echo "  --skip-notarize   Skip notarization and stapling"
   echo "  --skip-dmg        Skip DMG creation (direct download path only)"
   echo "  --skip-archive    Re-use existing $ARCHIVE_PATH"
@@ -72,6 +74,7 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --server) BUILD_SERVER=1; SCHEME="WithoutBGServer"; APP_NAME="WithoutBG Server" ;;
     --app-store) APP_STORE=1 ;;
     --skip-notarize) SKIP_NOTARIZE=1 ;;
     --skip-dmg) SKIP_DMG=1 ;;
@@ -133,6 +136,9 @@ APP_PATH="$EXPORT_DIR/$APP_NAME.app"
 ZIP_PATH="$BUILD_DIR/$APP_NAME-notarize.zip"
 EXPORT_OPTIONS_PLIST="$BUILD_DIR/ExportOptions.plist"
 DMG_NAME="withoutBG-${MARKETING_VERSION}.dmg"
+if [[ "$BUILD_SERVER" -eq 1 ]]; then
+  DMG_NAME="WithoutBG-Server-${MARKETING_VERSION}.dmg"
+fi
 DMG_PATH="$DIST_DIR/$DMG_NAME"
 
 mkdir -p "$BUILD_DIR" "$DIST_DIR"
