@@ -147,7 +147,9 @@ Licensed under the [withoutBG Open Model License](https://withoutbg.com/open-mod
 
 ## License
 
-withoutBG Open Weights — Apache License 2.0. See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) for model attributions.
+This project’s source code is licensed under the [Apache License 2.0](LICENSE).
+
+Bundled withoutBG Open Weights are distributed under the [withoutBG Open Model License](https://withoutbg.com/open-model/license?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme) (Apache 2.0 for withoutBG portions; Meta DINOv3 License for DINOv3 backbone weights). See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) for model attributions (DINOv3, Depth Anything V2).
 
 ## Support
 
