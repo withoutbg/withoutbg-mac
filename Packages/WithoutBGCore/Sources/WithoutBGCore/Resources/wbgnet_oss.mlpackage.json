@@ -33,5 +33,43 @@
   "obfuscate": true,
   "license_url": "https://withoutbg.com/open-model/license",
   "mae": 0.0001783192128641531,
-  "max_abs": 0.37241894006729126
+  "max_abs": 0.37241894006729126,
+  "gateway": {
+    "schema_version": 1,
+    "categories": [
+      "fine_strand",
+      "soft_detail",
+      "transparency",
+      "hard_opaque",
+      "flat_scene",
+      "vehicle"
+    ],
+    "router": {
+      "file": "router.mlpackage",
+      "sha256": "cad27928e71b0edebc1b2e47ee84e1608749074a53be8658a9e923ce2350db9f",
+      "canvas_size": 448,
+      "resize": "stretch",
+      "interpolation": "bicubic",
+      "input_name": "rgb",
+      "output_name": "logits"
+    },
+    "birefnet": {
+      "file": "birefnet.mlpackage",
+      "sha256": "4b1388a3b7ebb22eb0329c1dda8479f0f03f8743abda0cd5a41889460e748521",
+      "canvas_size": 1024,
+      "resize": "stretch",
+      "interpolation": "bilinear",
+      "input_name": "rgb",
+      "output_name": "alpha"
+    },
+    "matting": {
+      "file": "wbgnet_oss.mlpackage",
+      "sha256": "8c6d653b3f37f8cbdf4eb0e9e3e994a7f6b4368c7015d5e711f61fe6988cd1a4",
+      "canvas_size": 1024,
+      "resize": "letterbox",
+      "interpolation": "bilinear",
+      "input_name": "rgb",
+      "output_name": "alpha"
+    }
+  }
 }

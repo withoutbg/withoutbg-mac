@@ -28,3 +28,7 @@ dist/
 
 # build
 build/
+# Locally compiled model and test artifacts
+*.mlmodelc/
+*.dSYM/
+*.xcresult/

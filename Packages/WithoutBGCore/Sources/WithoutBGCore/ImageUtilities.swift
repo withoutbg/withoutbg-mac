@@ -144,7 +144,9 @@ public enum ImageUtilities {
     /// scaled content size.
     public static func letterboxTensor(
         _ image: CGImage,
-        canvas: Int = Int(maxDimension)
+        canvas: Int = Int(maxDimension),
+        stretch: Bool = false,
+        interpolation: CGInterpolationQuality = .high
     ) -> (tensor: MLMultiArray, newW: Int, newH: Int)? {
         let w = image.width
         let h = image.height
@@ -152,7 +154,10 @@ public enum ImageUtilities {
 
         let newW: Int
         let newH: Int
-        if h >= w {
+        if stretch {
+            newW = canvas
+            newH = canvas
+        } else if h >= w {
             newH = canvas
             newW = max(1, Int((Double(w) * Double(canvas) / Double(h)).rounded()))
         } else {
@@ -176,7 +181,7 @@ public enum ImageUtilities {
 
         ctx.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1))
         ctx.fill(CGRect(x: 0, y: 0, width: canvas, height: canvas))
-        ctx.interpolationQuality = .high
+        ctx.interpolationQuality = interpolation
         // Same top-left anchor as letterboxPixelBuffer (see draw call above).
         ctx.draw(image, in: CGRect(x: 0, y: canvas - newH, width: newW, height: newH))
 

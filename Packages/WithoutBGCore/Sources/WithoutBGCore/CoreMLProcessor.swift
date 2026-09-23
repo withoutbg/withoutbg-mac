@@ -13,10 +13,16 @@ public final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Senda
 
     private let lock = NSLock()
     private var cachedModel: MLModel?
+    private var gateway: CommunityGateway?
 
     public init() {
         Task.detached(priority: .utility) { [weak self] in
-            _ = try? self?.loadModel()
+            if let root = WithoutBGCoreResources.bundle.resourceURL,
+               FileManager.default.fileExists(atPath: root.appendingPathComponent("community-gateway.json").path) {
+                _ = try? self?.loadGateway(root: root)
+            } else {
+                _ = try? self?.loadModel()
+            }
         }
     }
 
@@ -46,6 +52,12 @@ public final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Senda
     }
 
     private func runInference(on image: CGImage) throws -> ProcessorResult {
+        let communityRoot = WithoutBGCoreResources.bundle.resourceURL
+        if let root = communityRoot,
+           FileManager.default.fileExists(atPath: root.appendingPathComponent("community-gateway.json").path) {
+            let gateway = try loadGateway(root: root)
+            return try gateway.process(image)
+        }
         let start = Date()
         let model = try loadModel()
 
@@ -84,7 +96,16 @@ public final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Senda
         return ProcessorResult(processed: cutout, alphaMatte: matte, latencyMs: latencyMs)
     }
 
-    private static func makeMatte(
+    private func loadGateway(root: URL) throws -> CommunityGateway {
+        lock.lock()
+        defer { lock.unlock() }
+        if let gateway { return gateway }
+        let loaded = try CommunityGateway(root: root)
+        gateway = loaded
+        return loaded
+    }
+
+    static func makeMatte(
         from alpha: MLMultiArray,
         canvas: Int,
         validW: Int,
@@ -92,32 +113,15 @@ public final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Senda
         targetW: Int,
         targetH: Int
     ) -> CGImage? {
-        guard validW > 0, validH > 0 else { return nil }
+        guard validW > 0, validH > 0, validW <= canvas, validH <= canvas,
+              alpha.shape.map({ $0.intValue }) == [1, 1, canvas, canvas] else { return nil }
         var gray = [UInt8](repeating: 0, count: validW * validH)
-
-        func fill(_ read: (Int) -> Float) {
-            for y in 0..<validH {
-                let srcRow = y * canvas
-                let dstRow = y * validW
-                for x in 0..<validW {
-                    let v = max(0, min(1, read(srcRow + x)))
-                    gray[dstRow + x] = UInt8(v * 255 + 0.5)
-                }
+        for y in 0..<validH {
+            for x in 0..<validW {
+                let value = alpha[[0, 0, NSNumber(value: y), NSNumber(value: x)]].floatValue
+                guard value.isFinite else { return nil }
+                gray[y * validW + x] = UInt8(max(0, min(1, value)) * 255 + 0.5)
             }
-        }
-
-        switch alpha.dataType {
-        case .float32:
-            let p = alpha.dataPointer.bindMemory(to: Float32.self, capacity: alpha.count)
-            fill { Float(p[$0]) }
-        case .float16:
-            let p = alpha.dataPointer.bindMemory(to: Float16.self, capacity: alpha.count)
-            fill { Float(p[$0]) }
-        case .double:
-            let p = alpha.dataPointer.bindMemory(to: Double.self, capacity: alpha.count)
-            fill { Float(p[$0]) }
-        @unknown default:
-            return nil
         }
 
         guard let cropped = ImageUtilities.grayImage(gray, width: validW, height: validH) else {

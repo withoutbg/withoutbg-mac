@@ -20,7 +20,11 @@ let package = Package(
                 .copy("Resources/wbgnet_oss.mlpackage"),
                 .copy("Resources/wbgnet_oss.mlpackage.json"),
                 .copy("Resources/product-links.json"),
+                .copy("Resources/community-gateway.json"),
+                .copy("Resources/router.mlpackage"),
+                .copy("Resources/birefnet.mlpackage"),
             ]
         ),
+        .testTarget(name: "WithoutBGCoreTests", dependencies: ["WithoutBGCore"]),
     ]
 )
