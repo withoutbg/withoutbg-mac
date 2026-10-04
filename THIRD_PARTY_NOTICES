@@ -158,14 +158,20 @@ License at https://www.apache.org/licenses/LICENSE-2.0.
 withoutBG Open Weights
 ----------------------
 
-  Component:   wbgnet_oss (Core ML)
+  Component:   withoutBG Open Weights v10.8.0 routed bundle (Core ML):
+               withoutbg-open-weights-backbone.mlpackage (DINOv3 ConvNeXt-Base + router),
+               withoutbg-open-weights.mlpackage (Depth Anything V2 Small + matting)
   License:     withoutBG Open Weights License
   License URL: https://withoutbg.com/open-model/license
   Project:     https://withoutbg.com/open-model
 
-## BiRefNet
+BiRefNet
+--------
 
-The community segmentation branch uses BiRefNet by ZhengPeng7.
+  Component:   birefnet-general.mlpackage (segmentation branch for hard opaque
+               objects, flat scenes and vehicles)
+
+BiRefNet by ZhengPeng7.
 Source: https://github.com/ZhengPeng7/BiRefNet
 
 MIT License

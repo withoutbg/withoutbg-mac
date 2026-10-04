@@ -17,14 +17,17 @@ let package = Package(
             name: "WithoutBGCore",
             path: "Sources/WithoutBGCore",
             resources: [
-                .copy("Resources/wbgnet_oss.mlpackage"),
-                .copy("Resources/wbgnet_oss.mlpackage.json"),
                 .copy("Resources/product-links.json"),
-                .copy("Resources/community-gateway.json"),
-                .copy("Resources/router.mlpackage"),
-                .copy("Resources/birefnet.mlpackage"),
+                .copy("Resources/withoutbg-open-weights.coreml.json"),
+                .copy("Resources/withoutbg-open-weights-backbone.mlpackage"),
+                .copy("Resources/withoutbg-open-weights.mlpackage"),
+                .copy("Resources/birefnet-general.mlpackage"),
             ]
         ),
-        .testTarget(name: "WithoutBGCoreTests", dependencies: ["WithoutBGCore"]),
+        .testTarget(
+            name: "WithoutBGCoreTests",
+            dependencies: ["WithoutBGCore"],
+            resources: [.copy("Fixtures")]
+        ),
     ]
 )

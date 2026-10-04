@@ -95,7 +95,7 @@ Release builds:
 ./scripts/release.sh --server           # WithoutBG Server DMG (headless)
 ```
 
-Background removal runs on-device via the bundled **withoutBG Open Weights** Core ML model (`wbgnet_oss`, fp32, v10). A `MockProcessor` is available behind the same `BackgroundRemovalProcessor` protocol for UI development without the model.
+Background removal runs on-device via the bundled **withoutBG Open Weights** routed bundle (Core ML, fp32, v10.8.0). A `MockProcessor` is available behind the same `BackgroundRemovalProcessor` protocol for UI development without the model.
 
 ## Monorepo layout
 
@@ -114,10 +114,12 @@ withoutbg-mac/
 Both the desktop queue and Local API serialize through one `SharedInferenceCoordinator` actor backed by a single `CoreMLProcessor` instance — one model load, fair GPU scheduling.
 
 ```
-Desktop UI ──┐
-             ├── SharedInferenceCoordinator ── CoreMLProcessor ── wbgnet_oss
-Local API ───┘
+Desktop UI ──┐                                                   ┌─ matting  (withoutbg-open-weights)
+             ├── SharedInferenceCoordinator ── CoreMLProcessor ── router ─┤
+Local API ───┘                                  (backbone + router)      └─ BiRefNet (birefnet-general)
 ```
+
+Xcode builds compile the bundled `.mlpackage`s to `.mlmodelc` at build time. SwiftPM builds (`swift test`) verify each package against the manifest checksum and compile it once into `~/Library/Application Support/withoutBG/CompiledModels`.
 
 Shared code lives in `Packages/WithoutBGCore`. To run the UI without the model, inject `MockProcessor()` at app init.
 
@@ -141,35 +143,24 @@ This app is the **native desktop** path: drag-and-drop cutouts plus an optional 
 
 ## Model
 
-The withoutBG Open Weights Model is a unified Core ML graph hosted with the app. Depth, segmentation, matting, and refinement run in one pass. Built with DINOv3.
+The withoutBG Open Weights Model (v10.8.0) is a routed bundle of three Core ML graphs shipped with the app, converted from the published [ONNX bundle](https://huggingface.co/withoutbg/withoutbg-openweights-onnx):
 
-Licensed under the [withoutBG Open Model License](https://withoutbg.com/open-model/license?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme) (Apache 2.0 for withoutBG portions; Meta DINOv3 License for DINOv3 backbone weights). See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) for model attributions (DINOv3, Depth Anything V2).
+- **Backbone + router** — one DINOv3 ConvNeXt-Base pass at 448² classifies the image and yields shared features.
+- **withoutBG matting** — fine strands, soft detail and transparency: Depth Anything V2 Small depth plus the matting trunk, reusing the backbone features.
+- **BiRefNet** — hard opaque objects, flat scenes and vehicles: segmentation at 1024².
+
+Only the selected branch runs, and its alpha is upsampled to the original resolution. Preprocessing matches the Python SDK and Docker host, and the Local API reports the decision in `X-Route-Category` / `X-Route-Pipeline` headers. Built with DINOv3.
+
+Licensed under the [withoutBG Open Model License](https://withoutbg.com/open-model/license?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme) (Apache 2.0 for withoutBG portions; Meta DINOv3 License for DINOv3 backbone weights). See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) for model attributions (DINOv3, Depth Anything V2, BiRefNet).
 
 ## License
 
 This project’s source code is licensed under the [Apache License 2.0](LICENSE).
 
-Bundled withoutBG Open Weights are distributed under the [withoutBG Open Model License](https://withoutbg.com/open-model/license?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme) (Apache 2.0 for withoutBG portions; Meta DINOv3 License for DINOv3 backbone weights). See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) for model attributions (DINOv3, Depth Anything V2).
+Bundled withoutBG Open Weights are distributed under the [withoutBG Open Model License](https://withoutbg.com/open-model/license?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme) (Apache 2.0 for withoutBG portions; Meta DINOv3 License for DINOv3 backbone weights). See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) for model attributions (DINOv3, Depth Anything V2, BiRefNet).
 
 ## Support
 
 - **Bugs / questions:** [GitHub Issues](https://github.com/withoutbg/withoutbg-mac/issues)
 - **Product page:** [withoutbg.com/mac](https://withoutbg.com/mac?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme)
 - **Commercial:** [contact@withoutbg.com](mailto:contact@withoutbg.com)
-
-## Community gateway (next release)
-
-The community pipeline reuses the trained withoutBG router. It sends fine strands,
-soft detail, and transparency to the matting branch trained and maintained by
-withoutBG. Hard opaque objects, flat scenes, and vehicles go to **BiRefNet** for
-segmentation. Only the selected branch runs.
-
-The same policy applies to Python, Docker, the Mac app, and Hugging Face. GIMP
-uses the gateway in its connected Mac or Docker server; the plugin still receives
-a cutout and an editable mask through the existing Local API. Local processing
-stays local. The Hugging Face Space runs inference on its host.
-
-New bundles carry a versioned gateway manifest, a trained router, the withoutBG
-matting model, and BiRefNet. Existing bundles without gateway metadata retain
-their original behavior. These changes are prepared locally; published downloads
-and historical benchmark results still describe the previous release.

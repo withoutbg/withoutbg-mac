@@ -1,0 +1,131 @@
+{
+  "schema_version": 3,
+  "pipeline": "routed",
+  "variant": "oss",
+  "model_version": "10.8.0",
+  "components": {
+    "depth": "depth_anything_v2_vits.pth",
+    "convnext": "dinov3_convnext_base_pretrain_lvd1689m-801f2ba9.pth",
+    "matting": "matting-dav2s-base_10.0.0_best_trunk.pth",
+    "router": "router_10.1.0_best.pth",
+    "birefnet": "BiRefNet"
+  },
+  "precision": "fp32",
+  "max_inference_size": [
+    4096,
+    4096
+  ],
+  "router": {
+    "file": "withoutbg-open-weights-backbone.mlpackage",
+    "sha256": "fbe40aaa1e28c20364441cfe7f70070a42879f99874fe0dd729124487027972e",
+    "inputs": {
+      "rgb_matting": {
+        "size": 448,
+        "resize": "stretch",
+        "interpolation": "bilinear",
+        "antialias": false
+      }
+    },
+    "logits_name": "route_logits",
+    "feature_names": [
+      "f0",
+      "f1",
+      "f2",
+      "f3"
+    ],
+    "categories": [
+      "fine_strand",
+      "soft_detail",
+      "transparency",
+      "hard_opaque",
+      "flat_scene",
+      "vehicle"
+    ],
+    "birefnet_categories": [
+      "hard_opaque",
+      "flat_scene",
+      "vehicle"
+    ],
+    "mae": 7.604559216459798e-06,
+    "max_abs": 3.2782554626464844e-05,
+    "feature_shapes": {
+      "f0": [
+        1,
+        128,
+        112,
+        112
+      ],
+      "f1": [
+        1,
+        256,
+        56,
+        56
+      ],
+      "f2": [
+        1,
+        512,
+        28,
+        28
+      ],
+      "f3": [
+        1,
+        1024,
+        14,
+        14
+      ]
+    }
+  },
+  "coarse": {
+    "file": "withoutbg-open-weights.mlpackage",
+    "sha256": "a20e97ef75d7a6b65d4a0a906247a35d778cb2717a545ff51194bee4fe32f409",
+    "inputs": {
+      "rgb_depth": {
+        "size": 518,
+        "resize": "stretch",
+        "interpolation": "bicubic",
+        "antialias": true
+      },
+      "rgb_matting": {
+        "size": 448,
+        "resize": "stretch",
+        "interpolation": "bilinear",
+        "antialias": false
+      }
+    },
+    "feature_names": [
+      "f0",
+      "f1",
+      "f2",
+      "f3"
+    ],
+    "output_name": "coarse_alpha",
+    "output_size": 448,
+    "mae": 6.653307394490481e-07,
+    "max_abs": 0.0010582804679870605
+  },
+  "birefnet": {
+    "file": "birefnet-general.mlpackage",
+    "sha256": "4b1388a3b7ebb22eb0329c1dda8479f0f03f8743abda0cd5a41889460e748521",
+    "inputs": {
+      "rgb": {
+        "size": 1024,
+        "resize": "stretch",
+        "interpolation": "bilinear",
+        "antialias": false
+      }
+    },
+    "output_name": "alpha",
+    "output_size": 1024,
+    "mae": 8.28164245867604e-08,
+    "max_abs": 0.0002256631851196289
+  },
+  "format": "coreml",
+  "source_onnx": {
+    "hf_repo": "withoutbg/withoutbg-openweights-onnx",
+    "hf_revision": "93afc91c44e0e27706159ead1623918b49f31d15",
+    "router": "a64ba43cc25557f568ad6f35ed1139049dd43f5568385fa4f9848e0b4c7123ff",
+    "coarse": "a22bc936a7be65f500f44955129bdde09a16d1ab3745a43224128638981cff32",
+    "birefnet": "28c988df0383b7c9925139b7aa012c33ce750e8552bd75a628346096acb4c0bb"
+  },
+  "minimum_deployment_target": "macOS14"
+}

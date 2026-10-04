@@ -140,7 +140,13 @@ func registerRoutes(
         var headers = HTTPHeaders()
         headers.add(name: .contentType, value: "image/png")
         headers.add(name: "X-Latency-Ms", value: String(result.latencyMs ?? 0))
-        headers.add(name: "X-Activity-Detail", value: returnMatte ? "matte" : "cutout")
+        var detail = returnMatte ? "matte" : "cutout"
+        if let route = result.route {
+            headers.add(name: "X-Route-Category", value: route.category)
+            headers.add(name: "X-Route-Pipeline", value: route.pipeline)
+            detail += " · \(route.category)"
+        }
+        headers.add(name: "X-Activity-Detail", value: detail)
         return Response(status: .ok, headers: headers, body: .init(data: png))
     }
 }
@@ -176,7 +182,10 @@ private func helpText(port: Int) -> String {
            image/jpeg, image/png, image/webp, image/heic — raw body
            multipart/form-data — field name: image
 
-         Response: 200 image/png  (header X-Latency-Ms: <ms>)
+         Response: 200 image/png
+           X-Latency-Ms: <ms>
+           X-Route-Category: router category, e.g. fine_strand or vehicle
+           X-Route-Pipeline: branch that produced the alpha: matting or birefnet
          Errors:   400 / 500  application/json {"error":"<message>"}
 
     Examples (curl)
@@ -249,6 +258,20 @@ private func openAPISpec(port: Int) -> String {
             "responses": {
               "200": {
                 "description": "PNG cutout or matte",
+                "headers": {
+                  "X-Latency-Ms": {
+                    "description": "Inference latency in milliseconds",
+                    "schema": { "type": "integer" }
+                  },
+                  "X-Route-Category": {
+                    "description": "Router category, e.g. fine_strand or vehicle",
+                    "schema": { "type": "string" }
+                  },
+                  "X-Route-Pipeline": {
+                    "description": "Branch that produced the alpha: matting or birefnet",
+                    "schema": { "type": "string" }
+                  }
+                },
                 "content": { "image/png": { "schema": { "type": "string", "format": "binary" } } }
               }
             }

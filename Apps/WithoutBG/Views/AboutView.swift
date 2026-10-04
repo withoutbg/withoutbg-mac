@@ -31,7 +31,7 @@ struct AboutView: View {
                 Text("Version \(version) (\(build))")
                     .font(.system(size: 12))
                     .foregroundStyle(WBGColors.textSecondary)
-                Text("Model: withoutBG Open Weights v\(CoreMLProcessor.modelVersion) · Core ML fp32")
+                Text("Model: withoutBG Open Weights v\(CoreMLProcessor.modelVersion) · Core ML fp32 · Built with DINOv3")
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(WBGColors.textTertiary)
             }
