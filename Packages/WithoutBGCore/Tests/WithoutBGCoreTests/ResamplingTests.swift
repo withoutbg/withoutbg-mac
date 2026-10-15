@@ -2,7 +2,7 @@ import XCTest
 @testable import WithoutBGCore
 
 /// Swift resizes against golden outputs of the SDK's `withoutbg.routed` helpers and PIL
-/// (model-pro `scripts/make_mac_resample_fixtures.py`).
+/// (modeldev `scripts/make_mac_resample_fixtures.py`).
 final class ResamplingTests: XCTestCase {
     private struct Plane: Decodable {
         let width: Int?

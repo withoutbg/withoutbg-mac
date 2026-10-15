@@ -1,7 +1,7 @@
 import Foundation
 
 /// Core ML mirror of the open-weights `routed` sidecar (schema 3). Written by
-/// model-pro `scripts/export_openweights_routed.py` from the published ONNX sidecar.
+/// modeldev `scripts/export_openweights_routed.py` from the published ONNX sidecar.
 struct RoutedManifest: Decodable {
     struct GraphInput: Decodable, Equatable {
         let size: Int

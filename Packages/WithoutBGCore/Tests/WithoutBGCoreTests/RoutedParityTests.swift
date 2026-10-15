@@ -4,7 +4,7 @@ import XCTest
 @testable import WithoutBGCore
 
 /// Opt-in end-to-end parity against the Python SDK on the published ONNX bundle.
-/// Generate references with model-pro `scripts/make_mac_parity_reference.py`, then
+/// Generate references with modeldev `scripts/make_mac_parity_reference.py`, then
 /// run with `WBG_PARITY_DIR=<output> swift test --filter RoutedParityTests`.
 final class RoutedParityTests: XCTestCase {
     private struct Route: Decodable {
