@@ -25,10 +25,10 @@ struct WithoutBGApp: App {
                 .environment(appDelegate.status)
                 .environment(appDelegate.activity)
                 .environment(\.serverController, appDelegate.serverController)
-                .frame(minWidth: 640, minHeight: 480)
+                .frame(minWidth: 820, minHeight: 480)
                 .preferredColorScheme(appearance.colorScheme)
         }
-        .defaultSize(width: 900, height: 700)
+        .defaultSize(width: 1100, height: 700)
         .windowToolbarStyle(.unified)
         .commands { AppCommands(model: model, appDelegate: appDelegate) }
 

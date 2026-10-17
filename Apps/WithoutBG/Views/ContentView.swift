@@ -1,146 +1,49 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
-/// Root content. Switches between the empty drop zone and the active grid,
-/// handles window-wide drag-and-drop + paste, and hosts the preview overlay.
+/// Sidebar destinations for the main window.
+enum AppDestination: String, Hashable, CaseIterable, Identifiable {
+    case backgroundRemoval
+    case productPlacement
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .backgroundRemoval: "Background Removal"
+        case .productPlacement: "Product Placement"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .backgroundRemoval: "person.and.background.dotted"
+        case .productPlacement: "cube"
+        }
+    }
+}
+
+/// Root content. Native macOS sidebar + detail for each feature area.
 struct ContentView: View {
-    @Environment(AppModel.self) private var model
-
-    private var queue: ProcessingQueue { model.queue }
+    @State private var destination: AppDestination? = .backgroundRemoval
 
     var body: some View {
-        @Bindable var model = model
-
-        GeometryReader { viewport in
-            ScrollView {
-                if !queue.hasJobs {
-                    DropZoneView(onOpen: model.openFilePanel)
-                        .padding(24)
-                        .frame(minHeight: viewport.size.height)
-                } else {
-                    QueueGridView(model: model)
-                        .padding(24)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        .frame(minHeight: viewport.size.height)
+        NavigationSplitView {
+            List(selection: $destination) {
+                ForEach(AppDestination.allCases) { item in
+                    Label(item.title, systemImage: item.systemImage)
+                        .tag(item)
                 }
             }
-        }
-        .background(WBGColors.page)
-        .toolbar { toolbarContent }
-        .onDrop(of: [.fileURL, .image], isTargeted: $model.isDragOver) { providers in
-            model.handleDrop(providers)
-        }
-        .overlay {
-            if model.isDragOver && !model.isDraggingOut { dragOverlay }
-        }
-        .animation(.easeInOut(duration: 0.15), value: model.isDragOver)
-        .onChange(of: progressKey) { _, _ in model.handleQueueProgress() }
-    }
-
-    /// Compact signature of the queue's progress state. Changing it drives the
-    /// Dock progress bar / badge and the batch-finished notification.
-    private var progressKey: String {
-        "\(queue.jobs.count)-\(queue.completedCount)-\(queue.processingCount)-\(queue.queuedCount)-\(queue.errorCount)"
-    }
-
-    // MARK: - Toolbar
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        // Leading: Add more / limit indicator
-        ToolbarItem(placement: .primaryAction) {
-            Button(action: model.openFilePanel) {
-                Label("Add Images", systemImage: "plus")
-            }
-            .disabled(queue.atLimit)
-            .help(queue.atLimit
-                  ? "Maximum of \(ProcessingQueue.maxBatch) images reached"
-                  : "Add images (⌘O)")
-        }
-
-        // Center: Status / selection summary
-        ToolbarItem(placement: .status) {
-            statusView
-        }
-
-        // Trailing: contextual actions
-        ToolbarItemGroup(placement: .automatic) {
-            let shareURLs = model.shareURLs
-            if !shareURLs.isEmpty {
-                ShareLink(items: shareURLs) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
-                .help("Share results via AirDrop, Messages, Mail…")
-            }
-            if model.hasSelection {
-                Button("Deselect") { model.clearSelection() }
-                    .help("Clear selection")
-            } else {
-                if queue.doneJobs.count >= 2 {
-                    Button(action: model.exportAll) {
-                        Label("Download All", systemImage: "arrow.down.circle")
-                    }
-                    .help("Download all results as a ZIP (⇧⌘E)")
-                }
-                if queue.hasJobs {
-                    Button(action: model.clear) {
-                        Label("Clear", systemImage: "trash")
-                    }
-                    .help("Remove all images")
-                }
+            .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 280)
+        } detail: {
+            switch destination ?? .backgroundRemoval {
+            case .backgroundRemoval:
+                BackgroundRemovalView()
+            case .productPlacement:
+                ProductPlacementView()
             }
         }
-    }
-
-    @ViewBuilder
-    private var statusView: some View {
-        if model.hasSelection {
-            Text("\(model.selection.count) selected")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-        } else if queue.processingCount > 0 {
-            HStack(spacing: 6) {
-                ProgressView()
-                    .progressViewStyle(.circular)
-                    .controlSize(.mini)
-                Text("Processing…")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            }
-        } else if !queue.doneJobs.isEmpty {
-            HStack(spacing: 6) {
-                if queue.errorCount > 0 {
-                    Text("\(queue.errorCount) failed")
-                        .foregroundStyle(.red)
-                }
-                Text("\(queue.doneJobs.count) done")
-                    .foregroundStyle(.secondary)
-                    .fontWeight(.medium)
-                if queue.queuedCount > 0 {
-                    Text("· \(queue.queuedCount) queued")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .font(.system(size: 12))
-        }
-    }
-
-    // MARK: - Drag overlay
-
-    private var dragOverlay: some View {
-        ZStack {
-            WBGColors.surface.opacity(0.92)
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(
-                    WBGColors.accent,
-                    style: StrokeStyle(lineWidth: 3, dash: [10, 6])
-                )
-                .padding(12)
-            Text("Drop images to remove backgrounds")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(WBGColors.textPrimary)
-        }
-        .allowsHitTesting(false)
-        .transition(.opacity)
+        .navigationSplitViewStyle(.balanced)
     }
 }
