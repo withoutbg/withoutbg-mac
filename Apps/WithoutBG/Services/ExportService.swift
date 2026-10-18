@@ -63,20 +63,32 @@ enum ExportService {
         for job: Job,
         background: ExportBackground = .transparent
     ) -> URL? {
-        // Reuse pre-staged transparent file for the common transparent case.
-        if background == .transparent, let url = job.stagedURL {
-            return url
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wbg-export", isDirectory: true)
+            .appendingPathComponent(job.id.uuidString, isDirectory: true)
+            .appendingPathComponent(background.rawValue, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        // Named after the (possibly renamed) source image so drag-out and share
+        // keep the original file name instead of a generic `result.png`.
+        let url = dir.appendingPathComponent(job.exportFileName)
+        if FileManager.default.fileExists(atPath: url.path) {
+            try? FileManager.default.removeItem(at: url)
+        }
+
+        // Hard-link the pre-staged transparent file for the common case.
+        if background == .transparent, let staged = job.stagedURL {
+            do {
+                try FileManager.default.linkItem(at: staged, to: url)
+                return url
+            } catch {
+                // Fall through and encode.
+            }
         }
         guard let cutout = job.processedImage,
               let composed = ImageUtilities.composited(cutout, over: background.cgColor),
               let data = ImageUtilities.pngData(from: composed)
         else { return nil }
 
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("wbg-drag", isDirectory: true)
-            .appendingPathComponent(job.id.uuidString, isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let url = dir.appendingPathComponent(job.exportFileName)
         do {
             try data.write(to: url)
         } catch {
@@ -138,6 +150,11 @@ enum ExportService {
             guard let pngData = data else { return nil }
             let item = NSPasteboardItem()
             item.setData(pngData, forType: .png)
+            // A named file alongside the PNG data, so pasting into Finder keeps
+            // the original file name.
+            if let url = stagedFileURL(for: job, background: background) {
+                item.setString(url.absoluteString, forType: .fileURL)
+            }
             return item
         }
         guard !items.isEmpty else { return }
@@ -219,6 +236,7 @@ enum ExportService {
         try fm.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: staging) }
 
+        var usedNames = Set<String>()
         for job in doneJobs {
             let data: Data?
             if background == .transparent, let url = job.stagedURL {
@@ -230,7 +248,8 @@ enum ExportService {
                 data = ImageUtilities.pngData(from: composed)
             }
             guard let pngData = data else { continue }
-            try pngData.write(to: folder.appendingPathComponent(job.exportFileName))
+            let name = uniqueName(job.exportFileName, taken: &usedNames)
+            try pngData.write(to: folder.appendingPathComponent(name))
         }
 
         if fm.fileExists(atPath: destination.path) {
@@ -254,6 +273,21 @@ enum ExportService {
         }
         if let coordError { throw coordError }
         if let copyError { throw copyError }
+    }
+
+    /// `name`, or `name-2`, `name-3`, ... if already taken (case-insensitive,
+    /// matching the default APFS behavior). Records the result in `taken`.
+    private static func uniqueName(_ name: String, taken: inout Set<String>) -> String {
+        let base = (name as NSString).deletingPathExtension
+        let ext = (name as NSString).pathExtension
+        var candidate = name
+        var n = 2
+        while taken.contains(candidate.lowercased()) {
+            candidate = ext.isEmpty ? "\(base)-\(n)" : "\(base)-\(n).\(ext)"
+            n += 1
+        }
+        taken.insert(candidate.lowercased())
+        return candidate
     }
 
     // MARK: - Errors
