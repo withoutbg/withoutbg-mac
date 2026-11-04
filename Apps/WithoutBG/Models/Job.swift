@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import WithoutBGCore
 
 /// A single image in the processing queue. Mirrors web `Job`.
 struct Job: Identifiable {
@@ -15,6 +16,9 @@ struct Job: Identifiable {
     var processedImage: CGImage?
     /// Grayscale matte produced by the processor.
     var alphaMatte: CGImage?
+    /// Smart brush: depth etc. from the first edit, so later strokes skip the
+    /// router and coarse graphs. In memory only; reset when the job is reprocessed.
+    var editContext: EditContext?
     /// Small cached thumbnail (~340px longest side) for grid display.
     var thumbnail: CGImage?
 

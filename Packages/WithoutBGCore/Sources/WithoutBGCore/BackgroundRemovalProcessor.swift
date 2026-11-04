@@ -10,13 +10,21 @@ public protocol BackgroundRemovalProcessor: Sendable {
 
     /// Smart brush: fix a cutout with brush marks (`width × height` of the image,
     /// row-major). *matte* is the previous result's matte, or nil to start fresh.
-    func edit(preparedImage: CGImage, keep: [Bool]?, remove: [Bool]?, matte: CGImage?) async throws -> ProcessorResult
+    /// *context* is the previous edit's `editContext` for this image (skips the
+    /// router and coarse graphs when it still matches).
+    func edit(preparedImage: CGImage, keep: [Bool]?, remove: [Bool]?, matte: CGImage?,
+              context: EditContext?) async throws -> ProcessorResult
 }
 
 public extension BackgroundRemovalProcessor {
     var supportsEdit: Bool { false }
 
-    func edit(preparedImage: CGImage, keep: [Bool]?, remove: [Bool]?, matte: CGImage?) async throws -> ProcessorResult {
+    func edit(preparedImage: CGImage, keep: [Bool]?, remove: [Bool]?, matte: CGImage?,
+              context: EditContext?) async throws -> ProcessorResult {
         throw ProcessorError.notImplemented
+    }
+
+    func edit(preparedImage: CGImage, keep: [Bool]?, remove: [Bool]?, matte: CGImage?) async throws -> ProcessorResult {
+        try await edit(preparedImage: preparedImage, keep: keep, remove: remove, matte: matte, context: nil)
     }
 }

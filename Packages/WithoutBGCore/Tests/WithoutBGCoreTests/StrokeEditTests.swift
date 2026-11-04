@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreML
 import XCTest
 @testable import WithoutBGCore
 
@@ -68,5 +69,96 @@ final class StrokeEditTests: XCTestCase {
         XCTAssertLessThan(Double(bad) / Double(diffs.count), 0.002, "\(bad) pixels off by > 8")
         // Remove strokes are clamped to 0.
         for y in 100..<130 { for x in 10..<90 { XCTAssertEqual(got[y * 320 + x], 0) } }
+    }
+
+    // MARK: - Edit context
+
+    func testEditContextTokenRoundTrip() throws {
+        let size = 448
+        let depth = (0..<(size * size)).map { Float(($0 * 7919) % 10007) / 10007 }
+        let ctx = EditContext(category: "hard_opaque", fingerprint: "0123456789abcdef", depth: depth, size: size)
+        let token = try XCTUnwrap(ctx.token)
+        XCTAssertTrue(token.hasPrefix("wbgctx1.hard_opaque.0123456789abcdef."))
+        let back = try XCTUnwrap(EditContext(token: token, categories: ["fine_strand", "hard_opaque"], size: size))
+        XCTAssertEqual(back.category, "hard_opaque")
+        XCTAssertEqual(back.fingerprint, "0123456789abcdef")
+        let err = zip(back.depth, depth).map { abs($0 - $1) }.max() ?? 1
+        XCTAssertLessThanOrEqual(err, 0.5 / 65535 + 1e-6)
+        XCTAssertNil(EditContext(token: token, categories: ["fine_strand"], size: size))
+        XCTAssertNil(EditContext(token: token, categories: ["hard_opaque"], size: 64))
+        XCTAssertNil(EditContext(token: "garbage", categories: ["hard_opaque"], size: size))
+        XCTAssertNil(EditContext(token: "wbgctx1.hard_opaque.0123456789abcdef.!!", categories: ["hard_opaque"], size: size))
+    }
+
+    private final class CountingGraph: RoutedGraph {
+        let inner: RoutedGraph
+        let name: String
+        let counts: Counts
+        init(_ inner: RoutedGraph, _ name: String, _ counts: Counts) {
+            (self.inner, self.name, self.counts) = (inner, name, counts)
+        }
+        func prediction(from input: MLFeatureProvider, options: MLPredictionOptions) throws -> MLFeatureProvider {
+            counts.values[name, default: 0] += 1
+            return try inner.prediction(from: input, options: options)
+        }
+    }
+
+    private final class Counts { var values: [String: Int] = [:] }
+
+    /// Bundled Core ML pipeline with every graph call counted.
+    private func countingPipeline() throws -> (RoutedPipeline, Counts) {
+        let root = try XCTUnwrap(WithoutBGCoreResources.bundle.resourceURL).resolvingSymlinksInPath()
+        let manifest = try RoutedManifest.load(from: root)
+        let cache = CompiledModelCache()
+        let counts = Counts()
+        let pipeline = RoutedPipeline(manifest: manifest) { graph in
+            let (file, sha) = switch graph {
+            case .router: (manifest.router.file, manifest.router.sha256)
+            case .coarse: (manifest.coarse.file, manifest.coarse.sha256)
+            case .birefnet: (manifest.birefnet.file, manifest.birefnet.sha256)
+            case .strokeEdit: (manifest.stroke_edit!.file, manifest.stroke_edit!.sha256)
+            }
+            let model = try cache.model(package: root.appendingPathComponent(file), sha256: sha)
+            return CountingGraph(model, graph.rawValue, counts)
+        }
+        return (pipeline, counts)
+    }
+
+    func testBundledEditWithContextRunsOnlyStrokeEdit() throws {
+        let (pipeline, counts) = try countingPipeline()
+        let image = try fixture("image")
+        let keep = ImageUtilities.maskMarks(try fixture("keep"), width: 320, height: 240)
+        let remove = ImageUtilities.maskMarks(try fixture("remove"), width: 320, height: 240)
+        let matte = try XCTUnwrap(ImageUtilities.grayPixels(try fixture("matte"), width: 320, height: 240))
+
+        let first = try pipeline.edit(image, keep: keep, remove: remove, matte: matte)
+        XCTAssertEqual(counts.values["router"], 1)
+        XCTAssertEqual(counts.values["coarse"], 1)
+        let ctx = try XCTUnwrap(first.editContext)
+        XCTAssertEqual(ctx.category, first.route?.category)
+
+        // Through the token, as the Local API does.
+        let token = try XCTUnwrap(ctx.token)
+        let manifest = pipeline.manifest
+        let parsed = try XCTUnwrap(EditContext(token: token, categories: manifest.router.categories,
+                                               size: manifest.stroke_edit!.size))
+        counts.values = [:]
+        let second = try pipeline.edit(image, keep: keep, remove: remove, matte: matte, context: parsed)
+        XCTAssertEqual(counts.values, ["strokeEdit": 1])
+        XCTAssertEqual(second.editContext?.fingerprint, ctx.fingerprint)
+        XCTAssertEqual(second.route, first.route)
+        let a = try XCTUnwrap(ImageUtilities.grayPixels(first.alphaMatte, width: 320, height: 240))
+        let b = try XCTUnwrap(ImageUtilities.grayPixels(second.alphaMatte, width: 320, height: 240))
+        XCTAssertLessThanOrEqual(zip(a, b).map { abs(Int($0) - Int($1)) }.max() ?? 0, 1)
+
+        // Stale (other image's fingerprint) and matte-less edits recompute.
+        counts.values = [:]
+        let stale = EditContext(category: ctx.category, fingerprint: "0000000000000000", depth: ctx.depth, size: ctx.size)
+        let third = try pipeline.edit(image, keep: keep, remove: remove, matte: matte, context: stale)
+        XCTAssertEqual(counts.values["router"], 1)
+        XCTAssertEqual(third.editContext?.fingerprint, ctx.fingerprint)
+        counts.values = [:]
+        _ = try pipeline.edit(image, keep: keep, remove: remove, matte: nil, context: ctx)
+        XCTAssertEqual(counts.values["router"], 1)
     }
 }

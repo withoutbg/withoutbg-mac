@@ -11,12 +11,16 @@ public struct ProcessorResult: Sendable {
     public let latencyMs: Int?
     /// Router decision (nil for processors that don't route).
     public let route: RouteDecision?
+    /// Smart brush edits only: pass back with the next edit of the same image.
+    public let editContext: EditContext?
 
-    public init(processed: CGImage, alphaMatte: CGImage, latencyMs: Int?, route: RouteDecision? = nil) {
+    public init(processed: CGImage, alphaMatte: CGImage, latencyMs: Int?, route: RouteDecision? = nil,
+                editContext: EditContext? = nil) {
         self.processed = processed
         self.alphaMatte = alphaMatte
         self.latencyMs = latencyMs
         self.route = route
+        self.editContext = editContext
     }
 }
 

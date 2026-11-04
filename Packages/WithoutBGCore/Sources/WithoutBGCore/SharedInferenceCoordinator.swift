@@ -16,7 +16,8 @@ public actor SharedInferenceCoordinator {
     public nonisolated var supportsEdit: Bool { processor.supportsEdit }
 
     public func edit(preparedImage: CGImage, keep: [Bool]?, remove: [Bool]?,
-                     matte: CGImage?) async throws -> ProcessorResult {
-        try await processor.edit(preparedImage: preparedImage, keep: keep, remove: remove, matte: matte)
+                     matte: CGImage?, context: EditContext? = nil) async throws -> ProcessorResult {
+        try await processor.edit(preparedImage: preparedImage, keep: keep, remove: remove, matte: matte,
+                                 context: context)
     }
 }

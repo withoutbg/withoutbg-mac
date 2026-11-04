@@ -34,8 +34,14 @@ public final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Senda
 
     public var supportsEdit: Bool { Self.manifest?.stroke_edit != nil }
 
+    /// Parse a Local API `edit_context` token for this bundle; nil when unusable.
+    public static func editContext(token: String) -> EditContext? {
+        guard let manifest, let spec = manifest.stroke_edit else { return nil }
+        return EditContext(token: token, categories: manifest.router.categories, size: spec.size)
+    }
+
     public func edit(preparedImage: CGImage, keep: [Bool]?, remove: [Bool]?,
-                     matte: CGImage?) async throws -> ProcessorResult {
+                     matte: CGImage?, context: EditContext?) async throws -> ProcessorResult {
         try await Task.detached(priority: .userInitiated) { [self] in
             let gray = try matte.map { m -> [UInt8] in
                 guard let g = ImageUtilities.grayPixels(m, width: preparedImage.width, height: preparedImage.height) else {
@@ -43,7 +49,8 @@ public final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Senda
                 }
                 return g
             }
-            return try loadPipeline().edit(preparedImage, keep: keep, remove: remove, matte: gray)
+            return try loadPipeline().edit(preparedImage, keep: keep, remove: remove, matte: gray,
+                                           context: context)
         }.value
     }
 

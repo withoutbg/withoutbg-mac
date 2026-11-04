@@ -140,7 +140,12 @@ final class RoutedPipeline {
     /// Apply Smart brush marks (`width × height` of *image*, row-major) to *matte*
     /// (the previous `L` matte, or nil to matte the image first). Mirrors
     /// `withoutbg.routed.RoutedPipeline.edit_alpha` (no refiner).
-    func edit(_ image: CGImage, keep: [Bool]?, remove: [Bool]?, matte: [UInt8]?) throws -> ProcessorResult {
+    ///
+    /// *context* is the `EditContext` a previous edit of this image returned: with
+    /// it and a *matte*, the router and coarse graphs are skipped. A stale one
+    /// (other image) is recomputed. The result carries the context to reuse.
+    func edit(_ image: CGImage, keep: [Bool]?, remove: [Bool]?, matte: [UInt8]?,
+              context: EditContext? = nil) throws -> ProcessorResult {
         let start = Date()
         guard let spec = manifest.stroke_edit, let depthName = manifest.coarse.edit_depth_name else {
             throw ProcessorError.processingFailed("This model has no Smart brush graph (needs Open Weights v4).")
@@ -163,40 +168,55 @@ final class RoutedPipeline {
         let (w, h) = (work.width, work.height)
         let rgb = Resampling.planarFloat(work)
         let workStrokes = StrokeEdit.resizeNearest(strokes, width: ow, height: oh, toWidth: w, height: h)
+        let router = manifest.router
+        let fingerprint = EditContext.fingerprint(of: work)
+        var ctx = context
+        if let c = ctx, matte == nil || c.fingerprint != fingerprint || c.size != spec.size
+            || c.depth.count != spec.size * spec.size || !router.categories.contains(c.category) {
+            ctx = nil
+        }
 
         lock.lock()
         let route: RouteDecision
         let alpha: [Float]
         do {
             defer { lock.unlock() }
-            let router = manifest.router
-            let rgbMatting = try Self.tensor(rgb, width: w, height: h, spec: router.inputs["rgb_matting"]!)
-            let routed = try load(.router).prediction(
-                from: MLDictionaryFeatureProvider(dictionary: ["rgb_matting": rgbMatting]),
-                options: MLPredictionOptions()
-            )
-            let category = router.categories[try Self.argmax(
-                routed.featureValue(for: router.logits_name)?.multiArrayValue, count: router.categories.count
-            )]
-            route = RouteDecision(category: category, pipeline: "edit")
-            var coarseFeeds = [
-                "rgb_matting": rgbMatting,
-                "rgb_depth": try Self.tensor(rgb, width: w, height: h, spec: manifest.coarse.inputs["rgb_depth"]!),
-            ]
-            for name in manifest.coarse.feature_names {
-                guard let feature = routed.featureValue(for: name) else {
-                    throw ProcessorError.processingFailed("Router output is missing \(name).")
-                }
-                coarseFeeds[name] = feature
-            }
-            let coarse = try load(.coarse).prediction(
-                from: MLDictionaryFeatureProvider(dictionary: coarseFeeds), options: MLPredictionOptions()
-            )
             let size = spec.size
-            guard let depthArray = coarse.featureValue(for: depthName)?.multiArrayValue else {
-                throw ProcessorError.processingFailed("Matting graph returned no \(depthName).")
+            var coarse: MLFeatureProvider?
+            let category: String
+            let depth: [Float]
+            if let ctx {
+                (category, depth) = (ctx.category, ctx.depth)
+            } else {
+                let rgbMatting = try Self.tensor(rgb, width: w, height: h, spec: router.inputs["rgb_matting"]!)
+                let routed = try load(.router).prediction(
+                    from: MLDictionaryFeatureProvider(dictionary: ["rgb_matting": rgbMatting]),
+                    options: MLPredictionOptions()
+                )
+                category = router.categories[try Self.argmax(
+                    routed.featureValue(for: router.logits_name)?.multiArrayValue, count: router.categories.count
+                )]
+                var coarseFeeds = [
+                    "rgb_matting": rgbMatting,
+                    "rgb_depth": try Self.tensor(rgb, width: w, height: h, spec: manifest.coarse.inputs["rgb_depth"]!),
+                ]
+                for name in manifest.coarse.feature_names {
+                    guard let feature = routed.featureValue(for: name) else {
+                        throw ProcessorError.processingFailed("Router output is missing \(name).")
+                    }
+                    coarseFeeds[name] = feature
+                }
+                let out = try load(.coarse).prediction(
+                    from: MLDictionaryFeatureProvider(dictionary: coarseFeeds), options: MLPredictionOptions()
+                )
+                guard let depthArray = out.featureValue(for: depthName)?.multiArrayValue else {
+                    throw ProcessorError.processingFailed("Matting graph returned no \(depthName).")
+                }
+                depth = Self.floats(depthArray, size: size)
+                coarse = out
+                ctx = EditContext(category: category, fingerprint: fingerprint, depth: depth, size: size)
             }
-            let depth = Self.floats(depthArray, size: size)
+            route = RouteDecision(category: category, pipeline: "edit")
 
             var workMatte: [Float]
             if let matte {
@@ -222,6 +242,7 @@ final class RoutedPipeline {
                         ]), options: MLPredictionOptions())
                     (outName, outSize) = (b.output_name, b.output_size)
                 } else {
+                    guard let coarse else { throw ProcessorError.processingFailed("No coarse matte.") }
                     branch = coarse
                     (outName, outSize) = (manifest.coarse.output_name, manifest.coarse.output_size)
                 }
@@ -271,7 +292,8 @@ final class RoutedPipeline {
             throw ProcessorError.processingFailed("Could not build the cutout.")
         }
         return ProcessorResult(processed: cutout, alphaMatte: matteImage,
-                               latencyMs: Int(Date().timeIntervalSince(start) * 1000), route: route)
+                               latencyMs: Int(Date().timeIntervalSince(start) * 1000), route: route,
+                               editContext: ctx)
     }
 
     /// `[1, 1, S, S]` (or `[1, S, S]`) multiarray → row-major `S × S` floats.

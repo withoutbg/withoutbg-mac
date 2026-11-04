@@ -127,6 +127,7 @@ final class ProcessingQueue {
             }
             patch(jobID) {
                 $0.alphaMatte = result.alphaMatte
+                $0.editContext = nil
                 $0.processedImage = result.processed
                 $0.latencyMs = result.latencyMs
                 $0.status = .done
@@ -155,9 +156,10 @@ final class ProcessingQueue {
             throw ProcessorError.processingFailed("This image can no longer be edited.")
         }
         let result = try await coordinator.edit(preparedImage: original, keep: keep, remove: remove,
-                                                matte: job.alphaMatte)
+                                                matte: job.alphaMatte, context: job.editContext)
         patch(jobID) {
             $0.alphaMatte = result.alphaMatte
+            $0.editContext = result.editContext
             $0.processedImage = result.processed
             $0.latencyMs = result.latencyMs
             $0.stagedURL = nil

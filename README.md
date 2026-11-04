@@ -153,7 +153,7 @@ The withoutBG Open Weights Model (v10.12.4, Open Weights v4) is a routed bundle 
 - **Backbone + router** — one DINOv3 ConvNeXt-Base pass at 448² classifies the image and yields shared features.
 - **withoutBG matting** — fine strands, soft detail and transparency: Depth Anything V2 Small depth plus the matting trunk, reusing the backbone features.
 - **BiRefNet** — hard opaque objects, flat scenes and vehicles: segmentation at 1024² (fp16-stored weights, fp32 compute).
-- **Smart brush** — a 2.5 MB stroke-edit network that fixes a cutout from brush strokes (`keep_mask` / `remove_mask` / `matte` on the Local API).
+- **Smart brush** — a 2.5 MB stroke-edit network that fixes a cutout from brush strokes (`keep_mask` / `remove_mask` / `matte` on the Local API). Later strokes on the same image skip the full pipeline: in the app automatically, over the Local API by sending back the `editContext` a JSON edit returns as `edit_context`.
 
 Only the selected branch runs, and its alpha is upsampled to the original resolution. Preprocessing matches the Python SDK and Docker host, and the Local API reports the decision in `X-Route-Category` / `X-Route-Pipeline` headers. Built with DINOv3.
 
