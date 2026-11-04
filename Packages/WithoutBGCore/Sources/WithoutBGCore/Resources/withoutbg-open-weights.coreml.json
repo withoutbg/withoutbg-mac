@@ -105,7 +105,7 @@
   },
   "birefnet": {
     "file": "birefnet-general.mlpackage",
-    "sha256": "4b1388a3b7ebb22eb0329c1dda8479f0f03f8743abda0cd5a41889460e748521",
+    "sha256": "1734955224c1ee604fdeb2136172cd267655851a25a1c2738c9b7e372e027cf4",
     "inputs": {
       "rgb": {
         "size": 1024,
@@ -116,8 +116,9 @@
     },
     "output_name": "alpha",
     "output_size": 1024,
-    "mae": 8.28164245867604e-08,
-    "max_abs": 0.0002256631851196289
+    "mae": 4.47366715484855e-06,
+    "max_abs": 0.0035240650177001953,
+    "weight_precision": "fp16"
   },
   "format": "coreml",
   "source_onnx": {
