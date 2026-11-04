@@ -366,10 +366,13 @@ final class AppModel {
 
     // MARK: - Smart brush
 
-    var canEdit: Bool { queue.supportsEdit }
+    /// Smart brush on a finished job: open weights when the local server can edit,
+    /// or any Pro cutout (Pro edits are sent to the hosted API).
+    func canEditJob(_ job: Job) -> Bool { queue.supportsEdit || job.engine == .pro }
 
     func openBrush(_ id: UUID) {
-        guard canEdit, queue.jobs.contains(where: { $0.id == id && $0.status == .done && $0.beforeImage != nil })
+        guard let job = queue.jobs.first(where: { $0.id == id }), job.status == .done,
+              job.beforeImage != nil, canEditJob(job)
         else { return }
         closePreview()
         brushJobID = id

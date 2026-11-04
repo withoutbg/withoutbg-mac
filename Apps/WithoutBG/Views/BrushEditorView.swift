@@ -145,6 +145,11 @@ struct BrushEditorView: View {
             Button("Done") { dismiss() }
                 .keyboardShortcut(.cancelAction)
                 .disabled(busy)
+            if job?.engine == .pro {
+                Text("Pro: 1 credit per Apply")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Button("Apply") { apply() }
                 .keyboardShortcut(.defaultAction)
                 .disabled(strokes.isEmpty || busy)

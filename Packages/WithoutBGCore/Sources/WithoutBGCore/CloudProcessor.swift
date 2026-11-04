@@ -55,23 +55,51 @@ public struct CloudProcessor: BackgroundRemovalProcessor {
     }
 
     public func process(preparedImage: CGImage) async throws -> ProcessorResult {
+        try await send(preparedImage: preparedImage, masks: [])
+    }
+
+    /// Smart brush on Pro: the photo plus every stroke so far, 1 credit per call.
+    ///
+    /// Stateless: nothing is kept between calls, so the caller passes all strokes
+    /// made on the cutout each time. Marks are original-size, row-major, and are
+    /// downscaled to the upload size here. Any matte from an earlier edit is not sent.
+    public func edit(preparedImage: CGImage, keep: [Bool]?, remove: [Bool]?) async throws -> ProcessorResult {
+        let proxy = Self.proxySize(of: preparedImage)
+        var masks: [MaskPart] = []
+        if let keep {
+            masks.append(MaskPart(name: "keep_mask", data: try Self.maskPNG(
+                keep, width: preparedImage.width, height: preparedImage.height,
+                toWidth: proxy.width, height: proxy.height)))
+        }
+        if let remove {
+            masks.append(MaskPart(name: "remove_mask", data: try Self.maskPNG(
+                remove, width: preparedImage.width, height: preparedImage.height,
+                toWidth: proxy.width, height: proxy.height)))
+        }
+        guard !masks.isEmpty else {
+            throw ProcessorError.processingFailed("Smart brush needs a keep or remove stroke.")
+        }
+        return try await send(preparedImage: preparedImage, masks: masks)
+    }
+
+    /// One mask part of the upload (`keep_mask` / `remove_mask`).
+    struct MaskPart: Equatable {
+        let name: String
+        let data: Data
+    }
+
+    private func send(preparedImage: CGImage, masks: [MaskPart]) async throws -> ProcessorResult {
         let start = Date()
         let proxy = ImageUtilities.resized(preparedImage, maxPx: Self.maxUploadSide).image
         guard let png = ImageUtilities.pngData(from: proxy) else { throw ProcessorError.invalidImage }
 
         let boundary = UUID().uuidString
-        var body = Data()
-        body.append(Data("--\(boundary)\r\n".utf8))
-        body.append(Data("Content-Disposition: form-data; name=\"file\"; filename=\"image.png\"\r\n".utf8))
-        body.append(Data("Content-Type: image/png\r\n\r\n".utf8))
-        body.append(png)
-        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
-
+        let parts = [MaskPart(name: "file", data: png)] + masks
         var request = request(path: "v1.0/alpha-channel")
         request.httpMethod = "POST"
         request.timeoutInterval = 60
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.httpBody = body
+        request.httpBody = Self.multipartBody(boundary: boundary, parts: parts)
 
         let data = try await send(request)
         guard let matte = ImageUtilities.cgImage(from: data),
@@ -86,6 +114,47 @@ public struct CloudProcessor: BackgroundRemovalProcessor {
             alphaMatte: fullMatte,
             latencyMs: Int(Date().timeIntervalSince(start) * 1000)
         )
+    }
+
+    /// Upload size of the photo (longest side capped at `maxUploadSide`).
+    static func proxySize(of image: CGImage) -> (width: Int, height: Int) {
+        let proxy = ImageUtilities.resized(image, maxPx: maxUploadSide).image
+        return (proxy.width, proxy.height)
+    }
+
+    /// Marks at (`w`, `h`) downscaled to (`pw`, `ph`) by nearest sample, as a binary PNG.
+    static func maskPNG(_ marks: [Bool], width w: Int, height h: Int,
+                        toWidth pw: Int, height ph: Int) throws -> Data {
+        guard w > 0, h > 0, pw > 0, ph > 0, marks.count == w * h else {
+            throw ProcessorError.processingFailed("Smart brush mask does not match the image size.")
+        }
+        var pixels = [UInt8](repeating: 0, count: pw * ph)
+        for y in 0..<ph {
+            let sy = min(h - 1, y * h / ph)
+            for x in 0..<pw {
+                let sx = min(w - 1, x * w / pw)
+                pixels[y * pw + x] = marks[sy * w + sx] ? 255 : 0
+            }
+        }
+        guard let image = ImageUtilities.grayImage(pixels, width: pw, height: ph),
+              let png = ImageUtilities.pngData(from: image)
+        else { throw ProcessorError.invalidImage }
+        return png
+    }
+
+    /// multipart/form-data body: each part is a PNG named by its field.
+    static func multipartBody(boundary: String, parts: [MaskPart]) -> Data {
+        var body = Data()
+        for part in parts {
+            let filename = part.name == "file" ? "image.png" : "\(part.name).png"
+            body.append(Data("--\(boundary)\r\n".utf8))
+            body.append(Data("Content-Disposition: form-data; name=\"\(part.name)\"; filename=\"\(filename)\"\r\n".utf8))
+            body.append(Data("Content-Type: image/png\r\n\r\n".utf8))
+            body.append(part.data)
+            body.append(Data("\r\n".utf8))
+        }
+        body.append(Data("--\(boundary)--\r\n".utf8))
+        return body
     }
 
     /// Credit balance for the key. Free; also validates the key.

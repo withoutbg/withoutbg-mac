@@ -71,7 +71,7 @@ OpenAPI spec: `http://127.0.0.1:8000/openapi.json`
 
 ## Optional: withoutBG Pro
 
-By default everything runs on-device. If you have a withoutBG Pro API key, add it under **Settings ▸ withoutBG Pro** (it's stored in the Keychain) and switch the engine to **withoutBG Pro (cloud)**. Each image is then uploaded to api.withoutbg.com, downscaled to 1024 px, and uses 1 credit. The returned matte is applied to your full-resolution original. Smart brush and the Local API always use the open weights. Keys: [withoutBG Pro](https://withoutbg.com/pro-model-api?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-pro-model-api).
+By default everything runs on-device. If you have a withoutBG Pro API key, add it under **Settings ▸ withoutBG Pro** (it's stored in the Keychain) and switch the engine to **withoutBG Pro (cloud)**. Each image is then uploaded to api.withoutbg.com, downscaled to 1024 px, and uses 1 credit. The returned matte is applied to your full-resolution original. Smart brush on a Pro cutout runs on Pro too: each Apply sends the photo and every stroke so far (stateless, 1 credit per Apply). The Local API always uses the open weights. Keys: [withoutBG Pro](https://withoutbg.com/pro-model-api?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-pro-model-api).
 
 ## Build & run
 

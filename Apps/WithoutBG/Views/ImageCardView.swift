@@ -218,7 +218,7 @@ struct ImageCardView: View {
         } else {
             if isDone {
                 Button("Preview") { model.openPreview(job.id) }
-                if model.canEdit {
+                if model.canEditJob(job) {
                     Button("Smart Brush…") { model.openBrush(job.id) }
                 }
                 Button("Download…") { model.download(job) }

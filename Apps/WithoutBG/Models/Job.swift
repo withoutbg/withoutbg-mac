@@ -19,6 +19,12 @@ struct Job: Identifiable {
     /// Smart brush: depth etc. from the first edit, so later strokes skip the
     /// router and coarse graphs. In memory only; reset when the job is reprocessed.
     var editContext: EditContext?
+    /// Engine that made the current cutout. Pro Smart brush resends every stroke.
+    var engine: ProcessingEngine?
+    /// Pro Smart brush: every keep / remove stroke made on this cutout (original size,
+    /// row-major). Resent on each Apply because the API keeps no state.
+    var proKeep: [Bool]?
+    var proRemove: [Bool]?
     /// Small cached thumbnail (~340px longest side) for grid display.
     var thumbnail: CGImage?
 

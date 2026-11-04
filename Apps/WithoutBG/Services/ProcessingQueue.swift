@@ -119,15 +119,21 @@ final class ProcessingQueue {
 
         do {
             let result: ProcessorResult
+            let engine: ProcessingEngine
             if ProcessingEngine.effective == .pro, let key = APIKeyStore.load() {
                 // Opt-in withoutBG Pro: hosted, so it skips the shared on-device queue.
+                engine = .pro
                 result = try await CloudProcessor(apiKey: key).process(preparedImage: before)
             } else {
+                engine = .openWeights
                 result = try await coordinator.process(preparedImage: before)
             }
             patch(jobID) {
                 $0.alphaMatte = result.alphaMatte
                 $0.editContext = nil
+                $0.engine = engine
+                $0.proKeep = nil
+                $0.proRemove = nil
                 $0.processedImage = result.processed
                 $0.latencyMs = result.latencyMs
                 $0.status = .done
@@ -155,6 +161,10 @@ final class ProcessingQueue {
         guard let job = job(jobID), job.status == .done, let original = job.beforeImage else {
             throw ProcessorError.processingFailed("This image can no longer be edited.")
         }
+        if job.engine == .pro {
+            try await editPro(jobID, job: job, original: original, keep: keep, remove: remove)
+            return
+        }
         let result = try await coordinator.edit(preparedImage: original, keep: keep, remove: remove,
                                                 matte: job.alphaMatte, context: job.editContext)
         patch(jobID) {
@@ -166,6 +176,39 @@ final class ProcessingQueue {
         }
         let cutout = result.processed
         Task { await self.stageResult(jobID: jobID, image: cutout) }
+    }
+
+    /// Pro Smart brush is stateless: every Apply sends all strokes made on this cutout.
+    private func editPro(_ jobID: UUID, job: Job, original: CGImage, keep: [Bool]?, remove: [Bool]?) async throws {
+        guard let key = APIKeyStore.load() else {
+            throw ProcessorError.processingFailed("withoutBG Pro needs an API key. Add it in Settings.")
+        }
+        let keepAll = Self.union(job.proKeep, keep)
+        let removeAll = Self.union(job.proRemove, remove)
+        patch(jobID) {
+            $0.proKeep = keepAll
+            $0.proRemove = removeAll
+        }
+        let result = try await CloudProcessor(apiKey: key)
+            .edit(preparedImage: original, keep: keepAll, remove: removeAll)
+        patch(jobID) {
+            $0.alphaMatte = result.alphaMatte
+            $0.editContext = nil
+            $0.processedImage = result.processed
+            $0.latencyMs = result.latencyMs
+            $0.stagedURL = nil
+        }
+        let cutout = result.processed
+        Task { await self.stageResult(jobID: jobID, image: cutout) }
+    }
+
+    /// Strokes from earlier Applies plus the new ones (either side may be nil).
+    static func union(_ a: [Bool]?, _ b: [Bool]?) -> [Bool]? {
+        switch (a, b) {
+        case (nil, nil): return nil
+        case let (x?, nil), let (nil, x?): return x
+        case let (x?, y?): return zip(x, y).map { $0 || $1 }
+        }
     }
 
     // MARK: - Off-main work with isolated callbacks
