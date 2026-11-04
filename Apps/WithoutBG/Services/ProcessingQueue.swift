@@ -118,7 +118,13 @@ final class ProcessingQueue {
         patch(jobID) { $0.status = .processing }
 
         do {
-            let result = try await coordinator.process(preparedImage: before)
+            let result: ProcessorResult
+            if ProcessingEngine.effective == .pro, let key = APIKeyStore.load() {
+                // Opt-in withoutBG Pro: hosted, so it skips the shared on-device queue.
+                result = try await CloudProcessor(apiKey: key).process(preparedImage: before)
+            } else {
+                result = try await coordinator.process(preparedImage: before)
+            }
             patch(jobID) {
                 $0.alphaMatte = result.alphaMatte
                 $0.processedImage = result.processed

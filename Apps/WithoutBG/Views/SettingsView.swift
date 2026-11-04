@@ -45,9 +45,11 @@ struct SettingsView: View {
 
             LocalAPISettingsSection()
 
+            ProSettingsSection()
+
             Section("Privacy") {
                 PrivacyBadge()
-                Text("Runs locally on your Mac. Images are not uploaded.")
+                Text("Runs locally on your Mac. Images are not uploaded, unless you turn on withoutBG Pro above.")
                     .font(.system(size: 12))
                     .foregroundStyle(WBGColors.textSecondary)
             }

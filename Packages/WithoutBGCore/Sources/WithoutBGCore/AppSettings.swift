@@ -33,6 +33,8 @@ public enum SettingsKey {
     public static let revealAfterExport = "revealAfterExport"
     public static let productUpdatesOptedIn = "productUpdatesOptedIn"
     public static let productUpdatesEmail = "productUpdatesEmail"
+    /// `ProcessingEngine` raw value; Pro also needs a key in `APIKeyStore`.
+    public static let processingEngine = "processingEngine"
 
     // Local API (unified keys)
     public static let localAPIEnabled = "localAPIEnabled"

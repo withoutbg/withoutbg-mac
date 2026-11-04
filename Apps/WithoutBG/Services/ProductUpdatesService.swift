@@ -30,6 +30,7 @@ enum ProductUpdatesService {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(ClientIdentity.userAgent, forHTTPHeaderField: "User-Agent")
         request.httpBody = try? JSONEncoder().encode(
             RequestBody(
                 email: trimmed,

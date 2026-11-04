@@ -33,7 +33,7 @@ Security fixes are applied to the latest released build only. We do not backport
 
 ## Local processing note
 
-Background removal in this app runs on-device. Images are not uploaded for the open-weights path. Reports that assume cloud upload of user images for local processing are out of scope unless a specific build or setting changes that behavior.
+Background removal in this app runs on-device. Images are not uploaded for the open-weights path. The optional withoutBG Pro engine (off by default, needs an API key the user saves in Settings, kept in the Keychain) uploads each image to api.withoutbg.com over HTTPS. Reports that assume cloud upload of user images for local processing are out of scope unless a specific build or setting changes that behavior.
 
 ## Disclosure
 

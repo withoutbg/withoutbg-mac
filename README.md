@@ -2,7 +2,7 @@
 
 ![withoutBG Mac app](images/mac-app.png)
 
-**Remove backgrounds on your Mac. Free, private, and local — nothing is uploaded.**
+**Remove backgrounds on your Mac. Free, private, and local — nothing is uploaded** (unless you opt in to withoutBG Pro).
 
 A native macOS app powered by **withoutBG Open Weights**. Drag and drop images for cutouts, or start the optional **Local API** on `http://127.0.0.1:8000` for scripts, the GIMP plugin, and CI.
 
@@ -68,6 +68,10 @@ curl -X POST \
 ```
 
 OpenAPI spec: `http://127.0.0.1:8000/openapi.json`
+
+## Optional: withoutBG Pro
+
+By default everything runs on-device. If you have a withoutBG Pro API key, add it under **Settings ▸ withoutBG Pro** (it's stored in the Keychain) and switch the engine to **withoutBG Pro (cloud)**. Each image is then uploaded to api.withoutbg.com, downscaled to 1024 px, and uses 1 credit. The returned matte is applied to your full-resolution original. Smart brush and the Local API always use the open weights. Keys: [withoutBG Pro](https://withoutbg.com/pro-model-api?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-pro-model-api).
 
 ## Build & run
 
