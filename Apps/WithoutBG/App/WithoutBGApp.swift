@@ -15,7 +15,7 @@ struct WithoutBGApp: App {
 
     init() {
         UserDefaults.standard.register(defaults: SettingsDefaults.values)
-        ProductLinks.configure(utmSource: "withoutbg-mac-unified")
+        ProductLinks.configure(utmSource: "mac-app")
     }
 
     var body: some Scene {

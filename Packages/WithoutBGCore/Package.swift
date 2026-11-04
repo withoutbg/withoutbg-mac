@@ -22,6 +22,7 @@ let package = Package(
                 .copy("Resources/withoutbg-open-weights-backbone.mlpackage"),
                 .copy("Resources/withoutbg-open-weights.mlpackage"),
                 .copy("Resources/birefnet-general.mlpackage"),
+                .copy("Resources/withoutbg-open-weights-stroke-edit.mlpackage"),
             ]
         ),
         .testTarget(

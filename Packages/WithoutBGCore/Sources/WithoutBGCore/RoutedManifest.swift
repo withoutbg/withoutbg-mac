@@ -27,6 +27,20 @@ struct RoutedManifest: Decodable {
         let feature_names: [String]
         let output_name: String
         let output_size: Int
+        /// Normalised depth the Keep / Remove edit reads (v4+ bundles).
+        let edit_depth_name: String?
+    }
+
+    /// Keep / Remove stroke-edit graph (Open Weights v4, 10.12.4+).
+    struct StrokeEditSpec: Decodable {
+        let file: String
+        let sha256: String
+        let input_name: String
+        let output_name: String
+        let size: Int
+        let channels: [String]
+        let resize: String
+        let soften_hard_strokes: String
     }
 
     struct BiRefNet: Decodable {
@@ -48,6 +62,7 @@ struct RoutedManifest: Decodable {
     let router: Router
     let coarse: Coarse
     let birefnet: BiRefNet
+    let stroke_edit: StrokeEditSpec?
 
     static func load(from root: URL) throws -> RoutedManifest {
         try decode(Data(contentsOf: root.appendingPathComponent(fileName)))
@@ -72,8 +87,10 @@ struct RoutedManifest: Decodable {
         guard max_inference_size.count == 2, max_inference_size.allSatisfy({ $0 > 0 }) else {
             throw Self.invalid("Invalid max_inference_size.")
         }
-        for (file, digest) in [(router.file, router.sha256), (coarse.file, coarse.sha256),
-                               (birefnet.file, birefnet.sha256)] {
+        var files = [(router.file, router.sha256), (coarse.file, coarse.sha256),
+                     (birefnet.file, birefnet.sha256)]
+        if let stroke_edit { files.append((stroke_edit.file, stroke_edit.sha256)) }
+        for (file, digest) in files {
             guard !file.isEmpty, !file.hasPrefix("/"), !file.split(separator: "/").contains("..") else {
                 throw Self.invalid("Bundle model paths must be relative to the bundle.")
             }
@@ -102,6 +119,16 @@ struct RoutedManifest: Decodable {
         }
         guard coarse.output_size > 0, birefnet.output_size > 0 else {
             throw Self.invalid("Invalid output sizes.")
+        }
+        if let edit = stroke_edit {
+            guard coarse.edit_depth_name != nil else {
+                throw Self.invalid("A stroke_edit bundle needs the coarse graph's edit_depth output.")
+            }
+            guard edit.channels == ["r", "g", "b", "matte", "keep", "remove", "depth"],
+                  edit.resize == "area", edit.soften_hard_strokes == "tent_1_2_1",
+                  edit.size == coarse.output_size else {
+                throw Self.invalid("Unsupported stroke-edit input spec.")
+            }
         }
     }
 

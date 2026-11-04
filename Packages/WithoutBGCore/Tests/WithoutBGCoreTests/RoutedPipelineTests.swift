@@ -53,6 +53,7 @@ final class RoutedPipelineTests: XCTestCase {
             case .router: router
             case .coarse: coarse
             case .birefnet: birefnet
+            case .strokeEdit: throw ProcessorError.processingFailed("no stroke-edit graph in this stub")
             }
         }
         return Harness(pipeline: pipeline, router: router, coarse: coarse, birefnet: birefnet, features: features)

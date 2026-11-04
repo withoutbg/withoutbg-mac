@@ -16,8 +16,11 @@ extension MLModel: RoutedGraph {}
 /// Only the selected branch runs; its alpha is bilinearly upsampled to native size.
 final class RoutedPipeline {
     enum Graph: String, CaseIterable {
-        case router, coarse, birefnet
+        case router, coarse, birefnet, strokeEdit
     }
+
+    /// True when the bundle ships the Keep / Remove stroke-edit graph (v4+).
+    var supportsEdit: Bool { manifest.stroke_edit != nil }
 
     let manifest: RoutedManifest
     private let loader: (Graph) throws -> RoutedGraph
@@ -37,6 +40,10 @@ final class RoutedPipeline {
             case .router: (manifest.router.file, manifest.router.sha256)
             case .coarse: (manifest.coarse.file, manifest.coarse.sha256)
             case .birefnet: (manifest.birefnet.file, manifest.birefnet.sha256)
+            case .strokeEdit: (manifest.stroke_edit?.file ?? "", manifest.stroke_edit?.sha256 ?? "")
+            }
+            if graph == .strokeEdit && manifest.stroke_edit == nil {
+                throw ProcessorError.processingFailed("This model has no Keep / Remove graph.")
             }
             return try cache.model(package: root.appendingPathComponent(file), sha256: sha)
         }
@@ -46,7 +53,7 @@ final class RoutedPipeline {
     func preload() throws {
         lock.lock()
         defer { lock.unlock() }
-        for graph in Graph.allCases { _ = try load(graph) }
+        for graph in Graph.allCases where graph != .strokeEdit || supportsEdit { _ = try load(graph) }
     }
 
     private func load(_ graph: Graph) throws -> RoutedGraph {
@@ -126,6 +133,166 @@ final class RoutedPipeline {
         }
         return ProcessorResult(processed: cutout, alphaMatte: matteImage,
                                latencyMs: Int(Date().timeIntervalSince(start) * 1000), route: route)
+    }
+
+    // MARK: - Keep / Remove
+
+    /// Apply Keep / Remove marks (`width × height` of *image*, row-major) to *matte*
+    /// (the previous `L` matte, or nil to matte the image first). Mirrors
+    /// `withoutbg.routed.RoutedPipeline.edit_alpha` (no refiner).
+    func edit(_ image: CGImage, keep: [Bool]?, remove: [Bool]?, matte: [UInt8]?) throws -> ProcessorResult {
+        let start = Date()
+        guard let spec = manifest.stroke_edit, let depthName = manifest.coarse.edit_depth_name else {
+            throw ProcessorError.processingFailed("This model has no Keep / Remove graph (needs Open Weights v4).")
+        }
+        guard keep != nil || remove != nil else {
+            throw ProcessorError.processingFailed("Paint a Keep or Remove stroke first.")
+        }
+        guard let original = Resampling.rgb8(from: image) else { throw ProcessorError.invalidImage }
+        let (ow, oh) = (original.width, original.height)
+        for marks in [keep, remove].compactMap({ $0 }) where marks.count != ow * oh {
+            throw ProcessorError.processingFailed("Mask size does not match the image.")
+        }
+        if let matte, matte.count != ow * oh {
+            throw ProcessorError.processingFailed("Matte size does not match the image.")
+        }
+        let strokes = StrokeEdit.combine(keep: keep, remove: remove, count: ow * oh)
+        let work = Resampling.fitMaxSize(
+            original, maxWidth: manifest.max_inference_size[0], maxHeight: manifest.max_inference_size[1]
+        )
+        let (w, h) = (work.width, work.height)
+        let rgb = Resampling.planarFloat(work)
+        let workStrokes = StrokeEdit.resizeNearest(strokes, width: ow, height: oh, toWidth: w, height: h)
+
+        lock.lock()
+        let route: RouteDecision
+        let alpha: [Float]
+        do {
+            defer { lock.unlock() }
+            let router = manifest.router
+            let rgbMatting = try Self.tensor(rgb, width: w, height: h, spec: router.inputs["rgb_matting"]!)
+            let routed = try load(.router).prediction(
+                from: MLDictionaryFeatureProvider(dictionary: ["rgb_matting": rgbMatting]),
+                options: MLPredictionOptions()
+            )
+            let category = router.categories[try Self.argmax(
+                routed.featureValue(for: router.logits_name)?.multiArrayValue, count: router.categories.count
+            )]
+            route = RouteDecision(category: category, pipeline: "edit")
+            var coarseFeeds = [
+                "rgb_matting": rgbMatting,
+                "rgb_depth": try Self.tensor(rgb, width: w, height: h, spec: manifest.coarse.inputs["rgb_depth"]!),
+            ]
+            for name in manifest.coarse.feature_names {
+                guard let feature = routed.featureValue(for: name) else {
+                    throw ProcessorError.processingFailed("Router output is missing \(name).")
+                }
+                coarseFeeds[name] = feature
+            }
+            let coarse = try load(.coarse).prediction(
+                from: MLDictionaryFeatureProvider(dictionary: coarseFeeds), options: MLPredictionOptions()
+            )
+            let size = spec.size
+            guard let depthArray = coarse.featureValue(for: depthName)?.multiArrayValue else {
+                throw ProcessorError.processingFailed("Matting graph returned no \(depthName).")
+            }
+            let depth = Self.floats(depthArray, size: size)
+
+            var workMatte: [Float]
+            if let matte {
+                let m = matte.map { Float($0) / 255 }
+                if (ow, oh) == (w, h) {
+                    workMatte = m
+                } else {
+                    workMatte = [Float](repeating: 0, count: w * h)
+                    m.withUnsafeBufferPointer { src in
+                        workMatte.withUnsafeMutableBufferPointer { dst in
+                            Resampling.torchBilinear(src.baseAddress!, channels: 1, height: oh, width: ow,
+                                                     toHeight: h, width: w, into: dst.baseAddress!)
+                        }
+                    }
+                }
+            } else {
+                let (branch, outName, outSize): (MLFeatureProvider, String, Int)
+                if router.birefnet_categories.contains(category) {
+                    let b = manifest.birefnet
+                    branch = try load(.birefnet).prediction(
+                        from: MLDictionaryFeatureProvider(dictionary: [
+                            "rgb": try Self.tensor(rgb, width: w, height: h, spec: b.inputs["rgb"]!),
+                        ]), options: MLPredictionOptions())
+                    (outName, outSize) = (b.output_name, b.output_size)
+                } else {
+                    branch = coarse
+                    (outName, outSize) = (manifest.coarse.output_name, manifest.coarse.output_size)
+                }
+                guard let out = branch.featureValue(for: outName)?.multiArrayValue else {
+                    throw ProcessorError.processingFailed("Branch returned no \(outName).")
+                }
+                let small = Self.floats(out, size: outSize)
+                workMatte = [Float](repeating: 0, count: w * h)
+                small.withUnsafeBufferPointer { src in
+                    workMatte.withUnsafeMutableBufferPointer { dst in
+                        Resampling.torchBilinear(src.baseAddress!, channels: 1, height: outSize, width: outSize,
+                                                 toHeight: h, width: w, into: dst.baseAddress!)
+                    }
+                }
+                workMatte = workMatte.map { min(max($0, 0), 1) }
+            }
+
+            let editor = try load(.strokeEdit)
+            alpha = try StrokeEdit.editAlpha(
+                rgbPlanar: rgb, matte: workMatte, strokes: workStrokes, depth: depth,
+                width: w, height: h, size: size
+            ) { input in
+                let x = try MLMultiArray(shape: [1, 7, NSNumber(value: size), NSNumber(value: size)],
+                                         dataType: .float32)
+                x.withUnsafeMutableBufferPointer(ofType: Float.self) { dst, _ in
+                    for i in 0..<input.count { dst[i] = input[i] }
+                }
+                let out = try editor.prediction(
+                    from: MLDictionaryFeatureProvider(dictionary: [spec.input_name: x]),
+                    options: MLPredictionOptions()
+                )
+                guard let y = out.featureValue(for: spec.output_name)?.multiArrayValue else {
+                    throw ProcessorError.processingFailed("Stroke-edit graph returned no \(spec.output_name).")
+                }
+                return Self.floats(y, size: size)
+            }
+        }
+
+        var gray = alpha.map { UInt8(min(max($0 * 255 + 0.5, 0), 255)) }
+        if (w, h) != (ow, oh) {
+            gray = Resampling.PIL.resize8(gray, width: w, height: h, channels: 1,
+                                          toWidth: ow, height: oh, filter: .bilinear)
+            for i in gray.indices where strokes[i] == StrokeEdit.remove { gray[i] = 0 }
+        }
+        guard let matteImage = ImageUtilities.grayImage(gray, width: ow, height: oh),
+              let cutout = ImageUtilities.cutout(from: image, matte: matteImage) else {
+            throw ProcessorError.processingFailed("Could not build the cutout.")
+        }
+        return ProcessorResult(processed: cutout, alphaMatte: matteImage,
+                               latencyMs: Int(Date().timeIntervalSince(start) * 1000), route: route)
+    }
+
+    /// `[1, 1, S, S]` (or `[1, S, S]`) multiarray → row-major `S × S` floats.
+    static func floats(_ array: MLMultiArray, size: Int) -> [Float] {
+        let shape = array.shape.map(\.intValue)
+        let strides = array.strides.map(\.intValue)
+        let rowStride = strides[shape.count - 2], colStride = strides[shape.count - 1]
+        var out = [Float](repeating: 0, count: size * size)
+        if array.dataType == .float32 {
+            array.withUnsafeBufferPointer(ofType: Float.self) { src in
+                for y in 0..<size { for x in 0..<size { out[y * size + x] = src[y * rowStride + x * colStride] } }
+            }
+        } else {
+            let lead = [NSNumber](repeating: 0, count: shape.count - 2)
+            for y in 0..<size {
+                for x in 0..<size {
+                    out[y * size + x] = array[lead + [NSNumber(value: y), NSNumber(value: x)]].floatValue
+                }
+            }
+        }
+        return out
     }
 
     // MARK: - Tensors

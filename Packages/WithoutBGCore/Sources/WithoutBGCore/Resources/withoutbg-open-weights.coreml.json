@@ -2,13 +2,14 @@
   "schema_version": 3,
   "pipeline": "routed",
   "variant": "oss",
-  "model_version": "10.8.0",
+  "model_version": "10.12.4",
   "components": {
     "depth": "depth_anything_v2_vits.pth",
     "convnext": "dinov3_convnext_base_pretrain_lvd1689m-801f2ba9.pth",
     "matting": "matting-dav2s-base_10.0.0_best_trunk.pth",
     "router": "router_10.1.0_best.pth",
-    "birefnet": "BiRefNet"
+    "birefnet": "BiRefNet",
+    "stroke_edit": "stroke-edit_10.12.4_best.pth"
   },
   "precision": "fp32",
   "max_inference_size": [
@@ -46,8 +47,8 @@
       "flat_scene",
       "vehicle"
     ],
-    "mae": 7.604559216459798e-06,
-    "max_abs": 3.2782554626464844e-05,
+    "mae": 7.359683513641357e-06,
+    "max_abs": 3.3408403396606445e-05,
     "feature_shapes": {
       "f0": [
         1,
@@ -77,7 +78,7 @@
   },
   "coarse": {
     "file": "withoutbg-open-weights.mlpackage",
-    "sha256": "a20e97ef75d7a6b65d4a0a906247a35d778cb2717a545ff51194bee4fe32f409",
+    "sha256": "76d75017540892d52128011f5c76759ebcc5adb7f534459f2b760cf09dc1a6c3",
     "inputs": {
       "rgb_depth": {
         "size": 518,
@@ -100,8 +101,9 @@
     ],
     "output_name": "coarse_alpha",
     "output_size": 448,
-    "mae": 6.653307394490481e-07,
-    "max_abs": 0.0010582804679870605
+    "mae": 5.197406466095345e-07,
+    "max_abs": 0.0003731250762939453,
+    "edit_depth_name": "edit_depth"
   },
   "birefnet": {
     "file": "birefnet-general.mlpackage",
@@ -116,17 +118,40 @@
     },
     "output_name": "alpha",
     "output_size": 1024,
-    "mae": 4.47366715484855e-06,
-    "max_abs": 0.0035240650177001953,
+    "mae": 2.580805968932509e-08,
+    "max_abs": 1.3899352779844776e-07,
     "weight_precision": "fp16"
+  },
+  "stroke_edit": {
+    "input_name": "stroke_input",
+    "output_name": "edited_alpha",
+    "size": 448,
+    "channels": [
+      "r",
+      "g",
+      "b",
+      "matte",
+      "keep",
+      "remove",
+      "depth"
+    ],
+    "resize": "area",
+    "soften_hard_strokes": "tent_1_2_1",
+    "depth": "coarse.edit_depth",
+    "sha256": "8902a67f53a21a0f0863140c2759fc4b146c9758a37fe0a452ed36dd64737507",
+    "mae": 6.881387548673956e-08,
+    "max_abs": 3.9637088775634766e-06,
+    "checkpoint": "stroke-edit_10.12.4_best.pth",
+    "file": "withoutbg-open-weights-stroke-edit.mlpackage"
   },
   "format": "coreml",
   "source_onnx": {
     "hf_repo": "withoutbg/withoutbg-openweights-onnx",
-    "hf_revision": "93afc91c44e0e27706159ead1623918b49f31d15",
+    "hf_revision": "withoutbg-hf",
     "router": "a64ba43cc25557f568ad6f35ed1139049dd43f5568385fa4f9848e0b4c7123ff",
-    "coarse": "a22bc936a7be65f500f44955129bdde09a16d1ab3745a43224128638981cff32",
-    "birefnet": "28c988df0383b7c9925139b7aa012c33ce750e8552bd75a628346096acb4c0bb"
+    "coarse": "cd40bdd56770b78e9a3593aa6dbbd28cf20ed4f6861c3a1644504d585ea3e4fd",
+    "birefnet": "28c988df0383b7c9925139b7aa012c33ce750e8552bd75a628346096acb4c0bb",
+    "stroke_edit": "84851c63c6ceb9946749039cc0df74f39eacbf52e9961031e6db63abec2e34df"
   },
   "minimum_deployment_target": "macOS14"
 }

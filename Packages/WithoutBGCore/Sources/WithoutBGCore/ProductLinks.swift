@@ -23,14 +23,16 @@ public struct ProductLinks: Decodable, Sendable {
     public let localAPIOpenAPI: URL
     public let localAPIGitHub: URL
 
-    private static var configuredUTMSource = "withoutbg-mac-desktop"
-    private static var configuredUTMMedium = "mac-app"
-    private static var configuredUTMCampaign = "in-app-links"
+    // Workspace UTM convention: source = where the reader is, medium = surface kind,
+    // campaign = current launch, content = which link (derived from the URL path).
+    private static var configuredUTMSource = "mac-app"
+    private static var configuredUTMMedium = "app"
+    private static var configuredUTMCampaign = "open-weights-v4"
 
     public static func configure(
         utmSource: String,
-        utmMedium: String = "mac-app",
-        utmCampaign: String = "in-app-links"
+        utmMedium: String = "app",
+        utmCampaign: String = "open-weights-v4"
     ) {
         configuredUTMSource = utmSource
         configuredUTMMedium = utmMedium
@@ -69,25 +71,25 @@ public struct ProductLinks: Decodable, Sendable {
     }
 
     private static let fallback = ProductLinks(
-        website: URL(string: "https://withoutbg.com")!,
-        openWeights: URL(string: "https://withoutbg.com/open-model")!,
-        api: URL(string: "https://withoutbg.com/pro-model")!,
-        apiSignup: URL(string: "https://withoutbg.com/signup")!,
-        documentation: URL(string: "https://withoutbg.com/docs")!,
-        benchmarks: URL(string: "https://withoutbg.com/open-model/results")!,
+        website: URL(string: "https://withoutbg.com")!,  // utm-ok: tagged by withUTM
+        openWeights: URL(string: "https://withoutbg.com/open-model")!,  // utm-ok: tagged by withUTM
+        api: URL(string: "https://withoutbg.com/pro-model")!,  // utm-ok: tagged by withUTM
+        apiSignup: URL(string: "https://withoutbg.com/signup")!,  // utm-ok: tagged by withUTM
+        documentation: URL(string: "https://withoutbg.com/docs")!,  // utm-ok: tagged by withUTM
+        benchmarks: URL(string: "https://withoutbg.com/open-model/results")!,  // utm-ok: tagged by withUTM
         github: URL(string: "https://github.com/withoutbg/withoutbg")!,
-        license: URL(string: "https://withoutbg.com/open-model/license")!,
-        support: URL(string: "https://withoutbg.com/open-model/support")!,
-        gpuFund: URL(string: "https://withoutbg.com/open-model/support/gpu-fund")!,
-        enterprise: URL(string: "https://withoutbg.com/contact")!,
-        productUpdates: URL(string: "https://api.withoutbg.com/updates")!,
-        privacyPolicy: URL(string: "https://withoutbg.com/privacy")!,
+        license: URL(string: "https://withoutbg.com/open-model/license")!,  // utm-ok: tagged by withUTM
+        support: URL(string: "https://withoutbg.com/open-model/support")!,  // utm-ok: tagged by withUTM
+        gpuFund: URL(string: "https://withoutbg.com/open-model/support/gpu-fund")!,  // utm-ok: tagged by withUTM
+        enterprise: URL(string: "https://withoutbg.com/contact")!,  // utm-ok: tagged by withUTM
+        productUpdates: URL(string: "https://api.withoutbg.com/updates")!,  // utm-ok: tagged by withUTM
+        privacyPolicy: URL(string: "https://withoutbg.com/privacy")!,  // utm-ok: tagged by withUTM
         ossRepo: URL(string: "https://github.com/withoutbg/withoutbg")!,
         dinov3Repo: URL(string: "https://github.com/facebookresearch/dinov3")!,
         dinov3License: URL(string: "https://ai.meta.com/resources/models-and-libraries/dinov3-license/")!,
-        macApp: URL(string: "https://withoutbg.com/mac")!,
-        localAPIDocs: URL(string: "https://withoutbg.com/docs/open-model/local-api")!,
-        localAPIOpenAPI: URL(string: "https://withoutbg.com/openapi/local-api.json")!,
+        macApp: URL(string: "https://withoutbg.com/mac")!,  // utm-ok: tagged by withUTM
+        localAPIDocs: URL(string: "https://withoutbg.com/docs/open-model/local-api")!,  // utm-ok: tagged by withUTM
+        localAPIOpenAPI: URL(string: "https://withoutbg.com/openapi/local-api.json")!,  // utm-ok: tagged by withUTM
         localAPIGitHub: URL(string: "https://github.com/withoutbg/withoutbg-mac")!
     )
 
@@ -120,11 +122,14 @@ public struct ProductLinks: Decodable, Sendable {
         guard url.host?.hasSuffix("withoutbg.com") == true else { return url }
         guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
 
-        var queryItems = components.queryItems ?? []
+        var queryItems = (components.queryItems ?? []).filter { !$0.name.hasPrefix("utm_") }
+        let path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let spot = path.isEmpty ? "home" : path.replacingOccurrences(of: "/", with: "-")
         queryItems.append(contentsOf: [
             URLQueryItem(name: "utm_source", value: configuredUTMSource),
             URLQueryItem(name: "utm_medium", value: configuredUTMMedium),
             URLQueryItem(name: "utm_campaign", value: configuredUTMCampaign),
+            URLQueryItem(name: "utm_content", value: "\(configuredUTMSource)-\(spot)"),
         ])
         components.queryItems = queryItems
         return components.url ?? url

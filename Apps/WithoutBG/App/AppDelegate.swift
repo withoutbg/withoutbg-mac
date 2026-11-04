@@ -16,7 +16,7 @@ final class AppDelegate: NSResponder, NSApplicationDelegate, NSServicesMenuReque
     lazy var model = AppModel(coordinator: inferenceCoordinator)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        ProductLinks.configure(utmSource: "withoutbg-mac-unified")
+        ProductLinks.configure(utmSource: "mac-app")
         UserDefaults.standard.migrateLegacyServerSettingsIfNeeded()
 
         NSApp.servicesProvider = self

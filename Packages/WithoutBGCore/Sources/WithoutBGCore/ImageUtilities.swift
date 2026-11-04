@@ -212,6 +212,17 @@ public enum ImageUtilities {
         return data as Data
     }
 
+    /// `L` pixels of a matte (gray or RGB; alpha dropped) at `width × height`, nil on a size mismatch.
+    public static func grayPixels(_ image: CGImage, width w: Int, height h: Int) -> [UInt8]? {
+        guard image.width == w, image.height == h else { return nil }
+        return grayBuffer(from: image, width: w, height: h)
+    }
+
+    /// Keep / Remove marks of a mask image (light, opaque pixels), nil on a size mismatch.
+    public static func maskMarks(_ image: CGImage, width w: Int, height h: Int) -> [Bool]? {
+        StrokeEdit.marks(from: image, width: w, height: h)
+    }
+
     // MARK: - Buffer helpers
 
     private static func rgbaBuffer(from image: CGImage, width w: Int, height h: Int) -> [UInt8]? {

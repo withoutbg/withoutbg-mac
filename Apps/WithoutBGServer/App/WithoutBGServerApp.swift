@@ -8,7 +8,7 @@ struct WithoutBGServerApp: App {
 
     init() {
         UserDefaults.standard.register(defaults: SettingsDefaults.values)
-        ProductLinks.configure(utmSource: "withoutbg-mac-server")
+        ProductLinks.configure(utmSource: "mac-server")
     }
 
     var body: some Scene {

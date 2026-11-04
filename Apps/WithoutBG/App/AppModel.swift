@@ -26,6 +26,8 @@ final class AppModel {
     /// Job that should enter inline-rename mode. Set by the Return key / menu so
     /// the matching card focuses its text field; cleared once the card consumes it.
     var renamingJobID: UUID?
+    /// Job open in the Keep / Remove brush editor.
+    var brushJobID: UUID?
 
     /// Drives the Undo/Redo menu items. `UndoManager` isn't observable, so we
     /// mirror its state into these properties after every mutation.
@@ -360,6 +362,17 @@ final class AppModel {
         selection = [job.id]
         selectionAnchorID = job.id
         return [job]
+    }
+
+    // MARK: - Keep / Remove
+
+    var canEdit: Bool { queue.supportsEdit }
+
+    func openBrush(_ id: UUID) {
+        guard canEdit, queue.jobs.contains(where: { $0.id == id && $0.status == .done && $0.beforeImage != nil })
+        else { return }
+        closePreview()
+        brushJobID = id
     }
 
     // MARK: - Quick Look preview

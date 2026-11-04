@@ -1,4 +1,4 @@
-¬
+Ë
 
 	rgb_depth*
 †† €
@@ -18,14 +18,17 @@
 f3*
 € €R
 coarse_alpha*
-ÀÀ €¢ø¢3
+ÀÀ €R
+
+edit_depth*
+ÀÀ €¢ù¢3
 #com.github.apple.coremltools.sourcetorch==2.7.1¢+
 $com.github.apple.coremltools.version9.0¢:
-+com.github.apple.coremltools.source_dialectTorchScript¢
-model_version10.8.0¢:
++com.github.apple.coremltools.source_dialectTorchScript¢
+model_version10.12.4¢:
 ,com.github.apple.coremltools.conversion_date
-2026-10-03²ü¨Ž§
-main„§
+2026-11-04²Æ«Ø©
+mainÎ©
 -
 	rgb_depth 
 
@@ -67,8 +70,9 @@ $com.github.apple.coremltools.version9.0¢:
 
 €
 
-CoreML7û¤
-CoreML7î¤coarse_alphaˆ
+CoreML7Å§
+CoreML7¸§coarse_alpha
+edit_depthˆ
 const&
 mean
 
@@ -22678,7 +22682,57 @@ interleave
 name
 
 "	
-op_1702"å
+op_1702S
+const
+var_1703
+*
+name
+
+"	
+op_1703*
+val
+
+
+
+
+    S
+const
+var_1704
+*
+name
+
+"	
+op_1704*
+val
+
+
+
+
+  €?‘
+clip
+x	
+
+depth
+beta
+
+
+var_1704
+alpha
+
+
+var_1703.
+
+edit_depth 
+
+
+
+À
+À*
+name
+
+
+"
+clip_1"å
 	buildInfo×"
 
 

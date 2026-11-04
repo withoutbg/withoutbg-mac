@@ -124,7 +124,6 @@ final class ProcessingQueue {
                 $0.processedImage = result.processed
                 $0.latencyMs = result.latencyMs
                 $0.status = .done
-                $0.beforeImage = nil
             }
             completedCount += 1
 
@@ -138,6 +137,27 @@ final class ProcessingQueue {
                 $0.error = error.localizedDescription
             }
         }
+    }
+
+    // MARK: - Keep / Remove
+
+    var supportsEdit: Bool { coordinator.supportsEdit }
+
+    /// Apply Keep / Remove marks (original-size, row-major) to a finished job's result.
+    func edit(_ jobID: UUID, keep: [Bool]?, remove: [Bool]?) async throws {
+        guard let job = job(jobID), job.status == .done, let original = job.beforeImage else {
+            throw ProcessorError.processingFailed("This image can no longer be edited.")
+        }
+        let result = try await coordinator.edit(preparedImage: original, keep: keep, remove: remove,
+                                                matte: job.alphaMatte)
+        patch(jobID) {
+            $0.alphaMatte = result.alphaMatte
+            $0.processedImage = result.processed
+            $0.latencyMs = result.latencyMs
+            $0.stagedURL = nil
+        }
+        let cutout = result.processed
+        Task { await self.stageResult(jobID: jobID, image: cutout) }
     }
 
     // MARK: - Off-main work with isolated callbacks

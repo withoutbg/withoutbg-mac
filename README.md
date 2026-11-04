@@ -6,7 +6,7 @@
 
 A native macOS app powered by **withoutBG Open Weights**. Drag and drop images for cutouts, or start the optional **Local API** on `http://127.0.0.1:8000` for scripts, the GIMP plugin, and CI.
 
-**[Download →](https://withoutbg.com/mac?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme)** · **[Local API docs →](https://withoutbg.com/docs/open-model/local-api?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme)** · **[Headless / CI →](https://withoutbg.com/mac/headless?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme)**
+**[Download →](https://withoutbg.com/mac?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-mac)** · **[Local API docs →](https://withoutbg.com/docs/open-model/local-api?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-docs-open-model-local-api)** · **[Headless / CI →](https://withoutbg.com/mac/headless?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-mac-headless)**
 
 ## See the results
 
@@ -14,7 +14,7 @@ A native macOS app powered by **withoutBG Open Weights**. Drag and drop images f
 ![Example 2](sample-results/open-weights/example2.png)
 ![Example 3](sample-results/open-weights/example3.png)
 
-**[Open Weights results →](https://withoutbg.com/open-model/results?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme)** · **[Cloud API results →](https://withoutbg.com/pro-model/results?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme)** · **[Compare →](https://withoutbg.com/compare/withoutbg-open-model-vs-pro-model?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme)**
+**[Open Weights results →](https://withoutbg.com/open-model/results?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-open-model-results)** · **[Cloud API results →](https://withoutbg.com/pro-model/results?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-pro-model-results)** · **[Compare →](https://withoutbg.com/compare/withoutbg-open-model-vs-pro-model?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-compare-withoutbg-open-model-vs-pro-model)**
 
 ## Features
 
@@ -22,6 +22,7 @@ A native macOS app powered by **withoutBG Open Weights**. Drag and drop images f
 
 - Drop, open (⌘O), or paste (⌘V) up to **20 images**
 - Sequential auto-processing with Quick Look preview
+- **Fix with Brush (new in 1.3):** right-click a result, paint Keep (green) over what went missing and Remove (red) over what should go, press Apply. One stroke on an object is enough
 - Responsive thumbnail grid with Photos-style selection
 - Export transparent PNGs individually or as a zip
 - Light / dark / system appearance
@@ -44,7 +45,7 @@ A native macOS app powered by **withoutBG Open Weights**. Drag and drop images f
 
 Most users should install **withoutBG**. The headless server build is for environments that only need the HTTP API.
 
-**[Download withoutBG →](https://withoutbg.com/mac?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme)**
+**[Download withoutBG →](https://withoutbg.com/mac?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-mac)**
 
 ## Requirements
 
@@ -95,7 +96,7 @@ Release builds:
 ./scripts/release.sh --server           # WithoutBG Server DMG (headless)
 ```
 
-Background removal runs on-device via the bundled **withoutBG Open Weights** routed bundle (Core ML, fp32, v10.8.0). A `MockProcessor` is available behind the same `BackgroundRemovalProcessor` protocol for UI development without the model.
+Background removal runs on-device via the bundled **withoutBG Open Weights** routed bundle (Core ML, v10.12.4). A `MockProcessor` is available behind the same `BackgroundRemovalProcessor` protocol for UI development without the model.
 
 ## Monorepo layout
 
@@ -139,28 +140,29 @@ This app is the **native desktop** path: drag-and-drop cutouts plus an optional 
 | **[Docker / self-host](https://github.com/withoutbg/withoutbg-inference)** | You want an HTTP API or browser UI on your own server (CPU or NVIDIA GPU) |
 | **[Python package](https://github.com/withoutbg/withoutbg-python)** | You want to embed withoutBG in scripts, notebooks, or backends |
 | **[Hugging Face](https://huggingface.co/withoutbg/withoutbg-openweights-onnx)** · **[Space](https://huggingface.co/spaces/withoutbg/withoutbg)** | You want to try a demo or download the ONNX weights directly |
-| **[Cloud API](https://withoutbg.com/pro-model?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme)** | You need maximum quality without running inference yourself |
+| **[Cloud API](https://withoutbg.com/pro-model?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-pro-model)** | You need maximum quality without running inference yourself |
 
 ## Model
 
-The withoutBG Open Weights Model (v10.8.0) is a routed bundle of three Core ML graphs shipped with the app, converted from the published [ONNX bundle](https://huggingface.co/withoutbg/withoutbg-openweights-onnx):
+The withoutBG Open Weights Model (v10.12.4, Open Weights v4) is a routed bundle of four Core ML graphs shipped with the app, converted from the published [ONNX bundle](https://huggingface.co/withoutbg/withoutbg-openweights-onnx):
 
 - **Backbone + router** — one DINOv3 ConvNeXt-Base pass at 448² classifies the image and yields shared features.
 - **withoutBG matting** — fine strands, soft detail and transparency: Depth Anything V2 Small depth plus the matting trunk, reusing the backbone features.
-- **BiRefNet** — hard opaque objects, flat scenes and vehicles: segmentation at 1024².
+- **BiRefNet** — hard opaque objects, flat scenes and vehicles: segmentation at 1024² (fp16-stored weights, fp32 compute).
+- **Keep / Remove** — a 2.5 MB stroke-edit network that fixes a cutout from brush strokes (`keep_mask` / `remove_mask` / `matte` on the Local API).
 
 Only the selected branch runs, and its alpha is upsampled to the original resolution. Preprocessing matches the Python SDK and Docker host, and the Local API reports the decision in `X-Route-Category` / `X-Route-Pipeline` headers. Built with DINOv3.
 
-Licensed under the [withoutBG Open Model License](https://withoutbg.com/open-model/license?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme) (Apache 2.0 for withoutBG portions; Meta DINOv3 License for DINOv3 backbone weights). See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) for model attributions (DINOv3, Depth Anything V2, BiRefNet).
+Licensed under the [withoutBG Open Model License](https://withoutbg.com/open-model/license?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-open-model-license) (Apache 2.0 for withoutBG portions; Meta DINOv3 License for DINOv3 backbone weights). See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) for model attributions (DINOv3, Depth Anything V2, BiRefNet).
 
 ## License
 
 This project’s source code is licensed under the [Apache License 2.0](LICENSE).
 
-Bundled withoutBG Open Weights are distributed under the [withoutBG Open Model License](https://withoutbg.com/open-model/license?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme) (Apache 2.0 for withoutBG portions; Meta DINOv3 License for DINOv3 backbone weights). See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) for model attributions (DINOv3, Depth Anything V2, BiRefNet).
+Bundled withoutBG Open Weights are distributed under the [withoutBG Open Model License](https://withoutbg.com/open-model/license?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-open-model-license) (Apache 2.0 for withoutBG portions; Meta DINOv3 License for DINOv3 backbone weights). See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) for model attributions (DINOv3, Depth Anything V2, BiRefNet).
 
 ## Support
 
 - **Bugs / questions:** [GitHub Issues](https://github.com/withoutbg/withoutbg-mac/issues)
-- **Product page:** [withoutbg.com/mac](https://withoutbg.com/mac?utm_source=github&utm_medium=withoutbg-mac-readme&utm_campaign=main-readme)
+- **Product page:** [withoutbg.com/mac](https://withoutbg.com/mac?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-mac)
 - **Commercial:** [contact@withoutbg.com](mailto:contact@withoutbg.com)

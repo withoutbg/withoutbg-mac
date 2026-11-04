@@ -36,7 +36,15 @@ struct BackgroundRemovalView: View {
         }
         .animation(.easeInOut(duration: 0.15), value: model.isDragOver)
         .onChange(of: progressKey) { _, _ in model.handleQueueProgress() }
+        .sheet(item: Binding(
+            get: { model.brushJobID.map(BrushTarget.init) },
+            set: { model.brushJobID = $0?.id }
+        )) { target in
+            BrushEditorView(model: model, jobID: target.id)
+        }
     }
+
+    private struct BrushTarget: Identifiable { let id: UUID }
 
     /// Compact signature of the queue's progress state. Changing it drives the
     /// Dock progress bar / badge and the batch-finished notification.

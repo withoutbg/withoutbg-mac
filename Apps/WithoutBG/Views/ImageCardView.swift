@@ -218,6 +218,9 @@ struct ImageCardView: View {
         } else {
             if isDone {
                 Button("Preview") { model.openPreview(job.id) }
+                if model.canEdit {
+                    Button("Fix with Brush…") { model.openBrush(job.id) }
+                }
                 Button("Download…") { model.download(job) }
                 Button("Copy") { model.copy(job) }
                 if let url = ExportService.stagedFileURL(for: job) {

@@ -25,7 +25,7 @@ This policy covers:
 Out of scope:
 
 - Third-party tools that call the Local API
-- The withoutBG Cloud API and website (see [withoutbg.com](https://withoutbg.com) / org repositories for those surfaces)
+- The withoutBG Cloud API and website (see [withoutbg.com](https://withoutbg.com?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-home) / org repositories for those surfaces)
 
 ## Supported versions
 

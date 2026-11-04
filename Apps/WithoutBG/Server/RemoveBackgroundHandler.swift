@@ -102,12 +102,14 @@ func registerRoutes(
 
         let imageData: Data
         let contentType = req.headers.contentType
+        var editParts: ImageUpload?
 
         if let ct = contentType, ct.type == "multipart" {
-            guard let file = try? req.content.decode(ImageUpload.self).image else {
+            guard let upload = try? req.content.decode(ImageUpload.self) else {
                 throw Abort(.badRequest, reason: "Multipart field 'image' not found.")
             }
-            imageData = Data(buffer: file.data)
+            imageData = Data(buffer: upload.image.data)
+            editParts = upload
         } else {
             guard let bytes = req.body.data else {
                 throw Abort(.badRequest, reason: "Empty request body.")
@@ -124,10 +126,45 @@ func registerRoutes(
         }
 
         let result: ProcessorResult
-        do {
-            result = try await coordinator.process(preparedImage: cgImage)
-        } catch let processorError as ProcessorError {
-            throw Abort(.internalServerError, reason: processorError.localizedDescription)
+        if let parts = editParts, parts.keep_mask != nil || parts.remove_mask != nil || parts.matte != nil {
+            // Keep / Remove: masks (white = painted) and the previous matte, all image-sized.
+            guard parts.keep_mask != nil || parts.remove_mask != nil else {
+                throw Abort(.unprocessableEntity, reason: "A matte needs a keep_mask or remove_mask.")
+            }
+            guard coordinator.supportsEdit else {
+                throw Abort(.unprocessableEntity, reason: "This model has no Keep / Remove graph.")
+            }
+            func decode(_ file: File?, _ name: String) throws -> CGImage? {
+                guard let file else { return nil }
+                guard let image = ImageUtilities.cgImage(from: Data(buffer: file.data)) else {
+                    throw Abort(.unprocessableEntity, reason: "\(name) is not a valid image.")
+                }
+                return image
+            }
+            func marks(_ file: File?, _ name: String) throws -> [Bool]? {
+                guard let image = try decode(file, name) else { return nil }
+                guard let m = ImageUtilities.maskMarks(image, width: cgImage.width, height: cgImage.height) else {
+                    throw Abort(.unprocessableEntity, reason: "\(name) size does not match the image.")
+                }
+                return m
+            }
+            let keep = try marks(parts.keep_mask, "keep_mask")
+            let remove = try marks(parts.remove_mask, "remove_mask")
+            let matte = try decode(parts.matte, "matte")
+            if let matte, matte.width != cgImage.width || matte.height != cgImage.height {
+                throw Abort(.unprocessableEntity, reason: "matte size does not match the image.")
+            }
+            do {
+                result = try await coordinator.edit(preparedImage: cgImage, keep: keep, remove: remove, matte: matte)
+            } catch let processorError as ProcessorError {
+                throw Abort(.internalServerError, reason: processorError.localizedDescription)
+            }
+        } else {
+            do {
+                result = try await coordinator.process(preparedImage: cgImage)
+            } catch let processorError as ProcessorError {
+                throw Abort(.internalServerError, reason: processorError.localizedDescription)
+            }
         }
 
         await MainActor.run { status.requestCount += 1 }
@@ -153,6 +190,9 @@ func registerRoutes(
 
 private struct ImageUpload: Content {
     var image: File
+    var keep_mask: File?
+    var remove_mask: File?
+    var matte: File?
 }
 
 private func helpText(port: Int) -> String {
@@ -181,6 +221,9 @@ private func helpText(port: Int) -> String {
          Accepted content types
            image/jpeg, image/png, image/webp, image/heic — raw body
            multipart/form-data — field name: image
+             optional Keep / Remove fields (same size as the image):
+               keep_mask, remove_mask  white = painted; Remove wins where both mark
+               matte                   previous result to edit (else processed first)
 
          Response: 200 image/png
            X-Latency-Ms: <ms>
@@ -194,6 +237,8 @@ private func helpText(port: Int) -> String {
     curl http://127.0.0.1:\(port)/openapi.json
     curl -X POST --data-binary @photo.jpg -H "Content-Type: image/jpeg" \\
       http://127.0.0.1:\(port)/v1/remove-background -o result.png
+    curl -F image=@photo.jpg -F remove_mask=@remove.png -F matte=@result.png \\
+      http://127.0.0.1:\(port)/v1/remove-background -o fixed.png
     """
 }
 
@@ -249,7 +294,10 @@ private func openAPISpec(port: Int) -> String {
                   "schema": {
                     "type": "object",
                     "properties": {
-                      "image": { "type": "string", "format": "binary" }
+                      "image": { "type": "string", "format": "binary" },
+                      "keep_mask": { "type": "string", "format": "binary", "description": "Keep mask, image-sized, white = keep" },
+                      "remove_mask": { "type": "string", "format": "binary", "description": "Remove mask, image-sized, white = remove" },
+                      "matte": { "type": "string", "format": "binary", "description": "Previous result to edit (needs a mask)" }
                     }
                   }
                 }

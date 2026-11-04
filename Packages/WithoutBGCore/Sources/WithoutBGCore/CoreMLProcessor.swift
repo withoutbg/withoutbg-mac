@@ -32,6 +32,21 @@ public final class CoreMLProcessor: BackgroundRemovalProcessor, @unchecked Senda
         }.value
     }
 
+    public var supportsEdit: Bool { Self.manifest?.stroke_edit != nil }
+
+    public func edit(preparedImage: CGImage, keep: [Bool]?, remove: [Bool]?,
+                     matte: CGImage?) async throws -> ProcessorResult {
+        try await Task.detached(priority: .userInitiated) { [self] in
+            let gray = try matte.map { m -> [UInt8] in
+                guard let g = ImageUtilities.grayPixels(m, width: preparedImage.width, height: preparedImage.height) else {
+                    throw ProcessorError.processingFailed("The matte could not be read.")
+                }
+                return g
+            }
+            return try loadPipeline().edit(preparedImage, keep: keep, remove: remove, matte: gray)
+        }.value
+    }
+
     private func loadPipeline() throws -> RoutedPipeline {
         lock.lock()
         defer { lock.unlock() }

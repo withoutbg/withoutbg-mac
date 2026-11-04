@@ -12,4 +12,11 @@ public actor SharedInferenceCoordinator {
     public func process(preparedImage: CGImage) async throws -> ProcessorResult {
         try await processor.process(preparedImage: preparedImage)
     }
+
+    public nonisolated var supportsEdit: Bool { processor.supportsEdit }
+
+    public func edit(preparedImage: CGImage, keep: [Bool]?, remove: [Bool]?,
+                     matte: CGImage?) async throws -> ProcessorResult {
+        try await processor.edit(preparedImage: preparedImage, keep: keep, remove: remove, matte: matte)
+    }
 }

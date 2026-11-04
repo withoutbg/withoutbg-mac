@@ -13,7 +13,7 @@ final class ServerAppDelegate: NSObject, NSApplicationDelegate {
     )
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        ProductLinks.configure(utmSource: "withoutbg-mac-server")
+        ProductLinks.configure(utmSource: "mac-server")
         UserDefaults.standard.migrateLegacyServerSettingsIfNeeded()
 
         let shouldStart = UserDefaults.standard.localAPIStartOnLaunch
