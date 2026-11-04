@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-/// Keep / Remove edit (Open Weights v4, sidecar `stroke_edit`): a port of
+/// Smart brush edit (Open Weights v4, sidecar `stroke_edit`): a port of
 /// withoutbg-python `withoutbg/edit.py` (the withoutBG reference host).
 ///
 /// Strokes are one `{0, 0.5, 1}` map (remove, untouched, keep). The stroke-edit graph
@@ -18,7 +18,7 @@ enum StrokeEdit {
 
     // MARK: - Masks
 
-    /// Marks of a Keep / Remove mask image: light, opaque pixels (`>= 128` composited
+    /// Marks of a Smart brush mask image: light, opaque pixels (`>= 128` composited
     /// onto black, PIL `L` luma). Nil when the mask does not match `width × height`.
     static func marks(from mask: CGImage, width w: Int, height h: Int) -> [Bool]? {
         guard mask.width == w, mask.height == h else { return nil }

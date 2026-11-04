@@ -2,7 +2,7 @@ import CoreGraphics
 import SwiftUI
 import WithoutBGCore
 
-/// Keep / Remove editor: paint green over what went missing and red over what should
+/// Smart brush editor: paint green over what went missing and red over what should
 /// go, then Apply. Strokes are kept in image pixels and rasterised to masks on Apply.
 struct BrushEditorView: View {
     enum Mode: String { case keep, remove }
@@ -47,7 +47,7 @@ struct BrushEditorView: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Fix with Brush").font(.system(size: 15, weight: .semibold))
+                Text("Smart Brush").font(.system(size: 15, weight: .semibold))
                 Text("Paint Keep over parts that went missing and Remove over parts that should go. "
                      + "One stroke on an object is enough; the rest of the image stays as it was.")
                     .font(.system(size: 11))

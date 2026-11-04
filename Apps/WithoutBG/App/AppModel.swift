@@ -26,7 +26,7 @@ final class AppModel {
     /// Job that should enter inline-rename mode. Set by the Return key / menu so
     /// the matching card focuses its text field; cleared once the card consumes it.
     var renamingJobID: UUID?
-    /// Job open in the Keep / Remove brush editor.
+    /// Job open in the Smart Brush editor.
     var brushJobID: UUID?
 
     /// Drives the Undo/Redo menu items. `UndoManager` isn't observable, so we
@@ -364,7 +364,7 @@ final class AppModel {
         return [job]
     }
 
-    // MARK: - Keep / Remove
+    // MARK: - Smart brush
 
     var canEdit: Bool { queue.supportsEdit }
 

@@ -27,11 +27,11 @@ struct RoutedManifest: Decodable {
         let feature_names: [String]
         let output_name: String
         let output_size: Int
-        /// Normalised depth the Keep / Remove edit reads (v4+ bundles).
+        /// Normalised depth the Smart brush edit reads (v4+ bundles).
         let edit_depth_name: String?
     }
 
-    /// Keep / Remove stroke-edit graph (Open Weights v4, 10.12.4+).
+    /// Smart brush stroke-edit graph (Open Weights v4, 10.12.4+).
     struct StrokeEditSpec: Decodable {
         let file: String
         let sha256: String

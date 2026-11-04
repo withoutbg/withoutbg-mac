@@ -19,7 +19,7 @@ final class RoutedPipeline {
         case router, coarse, birefnet, strokeEdit
     }
 
-    /// True when the bundle ships the Keep / Remove stroke-edit graph (v4+).
+    /// True when the bundle ships the Smart brush stroke-edit graph (v4+).
     var supportsEdit: Bool { manifest.stroke_edit != nil }
 
     let manifest: RoutedManifest
@@ -43,7 +43,7 @@ final class RoutedPipeline {
             case .strokeEdit: (manifest.stroke_edit?.file ?? "", manifest.stroke_edit?.sha256 ?? "")
             }
             if graph == .strokeEdit && manifest.stroke_edit == nil {
-                throw ProcessorError.processingFailed("This model has no Keep / Remove graph.")
+                throw ProcessorError.processingFailed("This model has no Smart brush graph.")
             }
             return try cache.model(package: root.appendingPathComponent(file), sha256: sha)
         }
@@ -135,15 +135,15 @@ final class RoutedPipeline {
                                latencyMs: Int(Date().timeIntervalSince(start) * 1000), route: route)
     }
 
-    // MARK: - Keep / Remove
+    // MARK: - Smart brush
 
-    /// Apply Keep / Remove marks (`width × height` of *image*, row-major) to *matte*
+    /// Apply Smart brush marks (`width × height` of *image*, row-major) to *matte*
     /// (the previous `L` matte, or nil to matte the image first). Mirrors
     /// `withoutbg.routed.RoutedPipeline.edit_alpha` (no refiner).
     func edit(_ image: CGImage, keep: [Bool]?, remove: [Bool]?, matte: [UInt8]?) throws -> ProcessorResult {
         let start = Date()
         guard let spec = manifest.stroke_edit, let depthName = manifest.coarse.edit_depth_name else {
-            throw ProcessorError.processingFailed("This model has no Keep / Remove graph (needs Open Weights v4).")
+            throw ProcessorError.processingFailed("This model has no Smart brush graph (needs Open Weights v4).")
         }
         guard keep != nil || remove != nil else {
             throw ProcessorError.processingFailed("Paint a Keep or Remove stroke first.")

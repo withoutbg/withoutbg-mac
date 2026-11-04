@@ -127,12 +127,12 @@ func registerRoutes(
 
         let result: ProcessorResult
         if let parts = editParts, parts.keep_mask != nil || parts.remove_mask != nil || parts.matte != nil {
-            // Keep / Remove: masks (white = painted) and the previous matte, all image-sized.
+            // Smart brush: masks (white = painted) and the previous matte, all image-sized.
             guard parts.keep_mask != nil || parts.remove_mask != nil else {
                 throw Abort(.unprocessableEntity, reason: "A matte needs a keep_mask or remove_mask.")
             }
             guard coordinator.supportsEdit else {
-                throw Abort(.unprocessableEntity, reason: "This model has no Keep / Remove graph.")
+                throw Abort(.unprocessableEntity, reason: "This model has no Smart brush graph.")
             }
             func decode(_ file: File?, _ name: String) throws -> CGImage? {
                 guard let file else { return nil }
@@ -221,7 +221,7 @@ private func helpText(port: Int) -> String {
          Accepted content types
            image/jpeg, image/png, image/webp, image/heic — raw body
            multipart/form-data — field name: image
-             optional Keep / Remove fields (same size as the image):
+             optional Smart brush fields (same size as the image):
                keep_mask, remove_mask  white = painted; Remove wins where both mark
                matte                   previous result to edit (else processed first)
 

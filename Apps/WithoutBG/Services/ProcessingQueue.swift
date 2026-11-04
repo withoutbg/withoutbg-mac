@@ -139,11 +139,11 @@ final class ProcessingQueue {
         }
     }
 
-    // MARK: - Keep / Remove
+    // MARK: - Smart brush
 
     var supportsEdit: Bool { coordinator.supportsEdit }
 
-    /// Apply Keep / Remove marks (original-size, row-major) to a finished job's result.
+    /// Apply Smart brush marks (original-size, row-major) to a finished job's result.
     func edit(_ jobID: UUID, keep: [Bool]?, remove: [Bool]?) async throws {
         guard let job = job(jobID), job.status == .done, let original = job.beforeImage else {
             throw ProcessorError.processingFailed("This image can no longer be edited.")

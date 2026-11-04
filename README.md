@@ -22,7 +22,7 @@ A native macOS app powered by **withoutBG Open Weights**. Drag and drop images f
 
 - Drop, open (⌘O), or paste (⌘V) up to **20 images**
 - Sequential auto-processing with Quick Look preview
-- **Fix with Brush (new in 1.3):** right-click a result, paint Keep (green) over what went missing and Remove (red) over what should go, press Apply. One stroke on an object is enough
+- **Smart Brush (new in 1.3):** right-click a result, choose **Smart Brush…**, paint Keep (green) over what went missing and Remove (red) over what should go, press Apply. One stroke on an object is enough
 - Responsive thumbnail grid with Photos-style selection
 - Export transparent PNGs individually or as a zip
 - Light / dark / system appearance
@@ -149,7 +149,7 @@ The withoutBG Open Weights Model (v10.12.4, Open Weights v4) is a routed bundle 
 - **Backbone + router** — one DINOv3 ConvNeXt-Base pass at 448² classifies the image and yields shared features.
 - **withoutBG matting** — fine strands, soft detail and transparency: Depth Anything V2 Small depth plus the matting trunk, reusing the backbone features.
 - **BiRefNet** — hard opaque objects, flat scenes and vehicles: segmentation at 1024² (fp16-stored weights, fp32 compute).
-- **Keep / Remove** — a 2.5 MB stroke-edit network that fixes a cutout from brush strokes (`keep_mask` / `remove_mask` / `matte` on the Local API).
+- **Smart brush** — a 2.5 MB stroke-edit network that fixes a cutout from brush strokes (`keep_mask` / `remove_mask` / `matte` on the Local API).
 
 Only the selected branch runs, and its alpha is upsampled to the original resolution. Preprocessing matches the Python SDK and Docker host, and the Local API reports the decision in `X-Route-Category` / `X-Route-Pipeline` headers. Built with DINOv3.
 

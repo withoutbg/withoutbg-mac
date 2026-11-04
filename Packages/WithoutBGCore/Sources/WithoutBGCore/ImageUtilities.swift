@@ -218,7 +218,7 @@ public enum ImageUtilities {
         return grayBuffer(from: image, width: w, height: h)
     }
 
-    /// Keep / Remove marks of a mask image (light, opaque pixels), nil on a size mismatch.
+    /// Smart brush marks of a mask image (light, opaque pixels), nil on a size mismatch.
     public static func maskMarks(_ image: CGImage, width w: Int, height h: Int) -> [Bool]? {
         StrokeEdit.marks(from: image, width: w, height: h)
     }
