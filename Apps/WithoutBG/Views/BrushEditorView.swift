@@ -116,6 +116,30 @@ struct BrushEditorView: View {
     // MARK: - Controls
 
     private var controls: some View {
+        VStack(spacing: 8) {
+            brushTools
+            HStack(spacing: 10) {
+                if job?.engine == .pro {
+                    Text("Pro: 1 credit per Apply")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                Spacer()
+                Button("Done") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(busy)
+                    .fixedSize()
+                Button("Apply") { apply() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(strokes.isEmpty || busy)
+                    .fixedSize()
+            }
+        }
+    }
+
+    private var brushTools: some View {
         HStack(spacing: 10) {
             Picker("Brush", selection: $mode) {
                 Label("Keep", systemImage: "plus.circle.fill").tag(Mode.keep)
@@ -142,17 +166,6 @@ struct BrushEditorView: View {
                 .help("Clear strokes")
 
             Spacer()
-            Button("Done") { dismiss() }
-                .keyboardShortcut(.cancelAction)
-                .disabled(busy)
-            if job?.engine == .pro {
-                Text("Pro: 1 credit per Apply")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Button("Apply") { apply() }
-                .keyboardShortcut(.defaultAction)
-                .disabled(strokes.isEmpty || busy)
         }
     }
 

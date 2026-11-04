@@ -219,7 +219,9 @@ struct ImageCardView: View {
             if isDone {
                 Button("Preview") { model.openPreview(job.id) }
                 if model.canEditJob(job) {
-                    Button("Smart Brush…") { model.openBrush(job.id) }
+                    Button { model.openBrush(job.id) } label: {
+                        Label("Smart Brush…", systemImage: "paintbrush")
+                    }
                 }
                 Button("Download…") { model.download(job) }
                 Button("Copy") { model.copy(job) }
