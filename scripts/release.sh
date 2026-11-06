@@ -261,6 +261,30 @@ if [[ "$SKIP_DMG" -eq 0 ]]; then
   create_dmg "$DMG_PATH"
 fi
 
+# The DMG is a separate Gatekeeper-checked file: sign it, notarize it, staple it.
+# Stapling the app alone leaves the downloaded DMG "rejected" (no usable signature).
+sign_notarize_dmg() {
+  local dmg_path="$1"
+  echo "==> Signing DMG: $dmg_path"
+  codesign --force --sign "${DEVELOPER_ID_SIGNING_IDENTITY:-Developer ID Application: Imran Kocabiyik ($TEAM_ID)}" --timestamp "$dmg_path"
+  codesign --verify --verbose=2 "$dmg_path"
+
+  if [[ "$SKIP_NOTARIZE" -eq 0 ]]; then
+    echo "==> Submitting DMG for notarization"
+    notary_submit "$dmg_path"
+    echo "==> Stapling DMG"
+    xcrun stapler staple "$dmg_path"
+    xcrun stapler validate "$dmg_path"
+    spctl -a -vvv -t open --context context:primary-signature "$dmg_path"
+  else
+    echo "==> Skipping DMG notarization"
+  fi
+}
+
+if [[ "$SKIP_DMG" -eq 0 ]]; then
+  sign_notarize_dmg "$DMG_PATH"
+fi
+
 echo
 echo "Release artifacts:"
 echo "  App:  $APP_PATH"
