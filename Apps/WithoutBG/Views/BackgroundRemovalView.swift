@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 /// paste handling, and the processing toolbar.
 struct BackgroundRemovalView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
 
     private var queue: ProcessingQueue { model.queue }
 
@@ -36,15 +37,10 @@ struct BackgroundRemovalView: View {
         }
         .animation(.easeInOut(duration: 0.15), value: model.isDragOver)
         .onChange(of: progressKey) { _, _ in model.handleQueueProgress() }
-        .sheet(item: Binding(
-            get: { model.brushJobID.map(BrushTarget.init) },
-            set: { model.brushJobID = $0?.id }
-        )) { target in
-            BrushEditorView(model: model, jobID: target.id)
+        .onChange(of: model.brushOpenRequest) { _, _ in
+            openWindow(id: SmartBrushWindow.id)
         }
     }
-
-    private struct BrushTarget: Identifiable { let id: UUID }
 
     /// Compact signature of the queue's progress state. Changing it drives the
     /// Dock progress bar / badge and the batch-finished notification.
