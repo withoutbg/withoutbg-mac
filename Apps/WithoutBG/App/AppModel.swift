@@ -26,8 +26,10 @@ final class AppModel {
     /// Job that should enter inline-rename mode. Set by the Return key / menu so
     /// the matching card focuses its text field; cleared once the card consumes it.
     var renamingJobID: UUID?
-    /// Job open in the Smart Brush editor.
+    /// Job open in the Smart Brush window.
     var brushJobID: UUID?
+    /// Bumped by `openBrush` so the main window opens (or raises) the Smart Brush window.
+    private(set) var brushOpenRequest = 0
 
     /// Drives the Undo/Redo menu items. `UndoManager` isn't observable, so we
     /// mirror its state into these properties after every mutation.
@@ -376,6 +378,7 @@ final class AppModel {
         else { return }
         closePreview()
         brushJobID = id
+        brushOpenRequest += 1
     }
 
     // MARK: - Quick Look preview

@@ -7,6 +7,9 @@ struct AppCommands: Commands {
     let model: AppModel
     let appDelegate: AppDelegate
     @Environment(\.openWindow) private var openWindow
+    /// Set while the Smart Brush window is key: Undo acts on its strokes and the
+    /// queue's pasteboard / selection commands are off.
+    @FocusedValue(\.brushEditor) private var brushEditor
 
     private var links: ProductLinks { ProductLinks.shared }
     private var issuesURL: URL {
@@ -29,32 +32,42 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(replacing: .undoRedo) {
-            Button(model.undoTitle) { model.performUndo() }
-                .keyboardShortcut("z", modifiers: .command)
-                .disabled(!model.canUndo)
-            Button(model.redoTitle) { model.performRedo() }
-                .keyboardShortcut("z", modifiers: [.command, .shift])
-                .disabled(!model.canRedo)
+            if let brushEditor {
+                Button("Undo Stroke") { brushEditor.undo() }
+                    .keyboardShortcut("z", modifiers: .command)
+                    .disabled(!brushEditor.canUndo)
+                Button("Redo") {}
+                    .keyboardShortcut("z", modifiers: [.command, .shift])
+                    .disabled(true)
+            } else {
+                Button(model.undoTitle) { model.performUndo() }
+                    .keyboardShortcut("z", modifiers: .command)
+                    .disabled(!model.canUndo)
+                Button(model.redoTitle) { model.performRedo() }
+                    .keyboardShortcut("z", modifiers: [.command, .shift])
+                    .disabled(!model.canRedo)
+            }
         }
 
         CommandGroup(replacing: .pasteboard) {
             Button("Copy") { model.copySelection() }
                 .keyboardShortcut("c", modifiers: .command)
-                .disabled(model.queue.doneJobs.isEmpty)
+                .disabled(model.queue.doneJobs.isEmpty || brushEditor != nil)
             Button("Paste") { model.paste() }
                 .keyboardShortcut("v", modifiers: .command)
+                .disabled(brushEditor != nil)
             Divider()
             Button("Delete") { model.deleteSelection() }
                 .keyboardShortcut(.delete, modifiers: .command)
-                .disabled(!model.hasSelection)
+                .disabled(!model.hasSelection || brushEditor != nil)
             Button("Rename") {
                 if let id = model.singleSelection { model.beginRename(id) }
             }
-            .disabled(model.singleSelection == nil)
+            .disabled(model.singleSelection == nil || brushEditor != nil)
             Divider()
             Button("Select All") { model.selectAll() }
                 .keyboardShortcut("a", modifiers: .command)
-                .disabled(!model.queue.hasJobs)
+                .disabled(!model.queue.hasJobs || brushEditor != nil)
         }
 
         CommandGroup(after: .toolbar) {

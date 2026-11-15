@@ -21,22 +21,46 @@ A native macOS app powered by **withoutBG Open Weights**. Drag and drop images f
 ### Desktop
 
 - Drop, open (⌘O), or paste (⌘V) up to **20 images**
-- Sequential auto-processing with Quick Look preview
-- **Smart Brush (new in 1.3):** right-click a result, choose **Smart Brush…**, paint Keep (green) over what went missing and Remove (red) over what should go, press Apply. One stroke on an object is enough
-- Responsive thumbnail grid with Photos-style selection
-- Export transparent PNGs individually or as a zip
+- Sequential auto-processing with Quick Look preview, Dock progress, and a notification when a batch finishes
+- Responsive thumbnail grid with Photos-style selection; drag results straight out into other apps
+- Export transparent, white, or black background PNGs individually or as a zip (original file names kept)
 - Light / dark / system appearance
 - Finder Services: **Remove Background** on selected images
+
+### Smart Brush
+
+Fix a cutout by painting on it. Right-click a result and choose **Smart Brush…**, paint **Keep** (green) over what went missing and **Remove** (red) over what should go, then press **Apply**. One stroke on an object is enough; the rest of the image stays as it was. Learn which strokes work best in the [Smart Brush guide](https://withoutbg.com/smart-brush?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-smart-brush).
+
+![Smart Brush: Keep strokes in green, Remove strokes in red](images/smart-brush.png)
+
+<sub>Photo by <a href="https://unsplash.com/@busgram?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Büşra Salkım</a> on <a href="https://unsplash.com/photos/the-leaning-tower-of-the-leaning-tower-of-pisa-8AlX-lwVXIE?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Unsplash</a></sub>
+
+- Opens in its own resizable window, sized for large and high-resolution displays
+- Zoom with pinch or ⌘-scroll, ⌘+ / ⌘− / ⌘0 (fit) / ⌘1 (100%); pan with scroll or Space-drag
+- Brush size from the slider or `[` and `]`, with an outline under the pointer; fine enough for pixel-level work when zoomed in
+- Background opacity slider to fade the original photo while you paint
+- ⌘Z undoes the last stroke; Clear removes all strokes
+- Works on Open Weights cutouts (on-device) and on Pro cutouts
+
+### withoutBG Pro (optional)
+
+- Opt-in: add an API key under **Settings ▸ withoutBG Pro** (stored in the Keychain) and switch the engine
+- 1 credit per image, and 1 credit per Smart Brush Apply on a Pro cutout
+- Off by default; see [Optional: withoutBG Pro](#optional-withoutbg-pro)
 
 ### Local API (optional)
 
 - Start/stop from the menu bar extra or Settings
-- `POST /v1/remove-background` — same inference engine as the desktop
+- `POST /v1/remove-background` — same inference engine as the desktop. Send raw image bytes, `multipart/form-data`, or JSON with a base64 `image`; JPEG, PNG, WebP, and HEIC in, PNG out
+- `?output=matte` returns the alpha matte instead of the cutout
+- Smart brush edits: send `keep_mask` / `remove_mask` (and optionally the previous `matte` or `edit_context`) with the image
 - `GET /health`, `GET /openapi.json`
 - Request log and operational metrics in the menu bar
 - Loopback-only (`127.0.0.1`) — sandboxed, private
 
 ## Downloads
+
+Notarized DMGs are published on [GitHub Releases](https://github.com/withoutbg/withoutbg-mac/releases/latest).
 
 | Product | Audience | Scheme |
 |---------|----------|--------|
@@ -63,6 +87,17 @@ Most users should install **withoutBG**. The headless server build is for enviro
 curl -X POST \
   --data-binary @photo.jpg \
   -H "Content-Type: image/jpeg" \
+  http://127.0.0.1:8000/v1/remove-background \
+  -o result.png
+```
+
+Smart brush edit (masks are image-sized, white = painted):
+
+```bash
+curl -X POST \
+  -F image=@photo.jpg \
+  -F keep_mask=@keep.png \
+  -F remove_mask=@remove.png \
   http://127.0.0.1:8000/v1/remove-background \
   -o result.png
 ```
@@ -102,7 +137,7 @@ Release builds:
 
 Background removal runs on-device via the bundled **withoutBG Open Weights** routed bundle (Core ML, v10.12.4). A `MockProcessor` is available behind the same `BackgroundRemovalProcessor` protocol for UI development without the model.
 
-## Monorepo layout
+## Repository layout
 
 ```
 withoutbg-mac/
@@ -130,9 +165,7 @@ Shared code lives in `Packages/WithoutBGCore`. To run the UI without the model, 
 
 ## Migration from WithoutBG Server
 
-The standalone [withoutbg-mac-server](https://github.com/withoutbg/withoutbg-mac-server) repository is consolidated into this monorepo. See [docs/MIGRATION.md](docs/MIGRATION.md).
-
-Existing `com.withoutbg.mac.server` installs continue to work via the **WithoutBGServer** target. New users should install **withoutBG** instead.
+The standalone `withoutbg-mac-server` is consolidated into this repo; existing installs keep working via the **WithoutBGServer** target, and new users should install **withoutBG**. See [docs/MIGRATION.md](docs/MIGRATION.md).
 
 ## More than Mac
 
@@ -153,7 +186,7 @@ The withoutBG Open Weights Model (v10.12.4, Open Weights v4) is a routed bundle 
 - **Backbone + router** — one DINOv3 ConvNeXt-Base pass at 448² classifies the image and yields shared features.
 - **withoutBG matting** — fine strands, soft detail and transparency: Depth Anything V2 Small depth plus the matting trunk, reusing the backbone features.
 - **BiRefNet** — hard opaque objects, flat scenes and vehicles: segmentation at 1024² (fp16-stored weights, fp32 compute).
-- **Smart brush** — a 2.5 MB stroke-edit network that fixes a cutout from brush strokes (`keep_mask` / `remove_mask` / `matte` on the Local API). Later strokes on the same image skip the full pipeline: in the app automatically, over the Local API by sending back the `editContext` a JSON edit returns as `edit_context`.
+- **Smart brush** — a 2.5 MB stroke-edit network that fixes a cutout from brush strokes (`keep_mask` / `remove_mask` / `matte` on the Local API). Later strokes on the same image skip the full pipeline: in the app automatically, over the Local API by sending back the `editContext` a JSON edit returns as `edit_context`. (Pro Smart brush is stateless instead: every Apply sends the photo and all strokes so far.)
 
 Only the selected branch runs, and its alpha is upsampled to the original resolution. Preprocessing matches the Python SDK and Docker host, and the Local API reports the decision in `X-Route-Category` / `X-Route-Pipeline` headers. Built with DINOv3.
 

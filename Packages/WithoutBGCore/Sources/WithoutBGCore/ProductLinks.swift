@@ -22,6 +22,7 @@ public struct ProductLinks: Decodable, Sendable {
     public let localAPIDocs: URL
     public let localAPIOpenAPI: URL
     public let localAPIGitHub: URL
+    public let smartBrush: URL
 
     // Workspace UTM convention: source = where the reader is, medium = surface kind,
     // campaign = current launch, content = which link (derived from the URL path).
@@ -90,7 +91,8 @@ public struct ProductLinks: Decodable, Sendable {
         macApp: URL(string: "https://withoutbg.com/mac")!,  // utm-ok: tagged by withUTM
         localAPIDocs: URL(string: "https://withoutbg.com/docs/open-model/local-api")!,  // utm-ok: tagged by withUTM
         localAPIOpenAPI: URL(string: "https://withoutbg.com/openapi/local-api.json")!,  // utm-ok: tagged by withUTM
-        localAPIGitHub: URL(string: "https://github.com/withoutbg/withoutbg-mac")!
+        localAPIGitHub: URL(string: "https://github.com/withoutbg/withoutbg-mac")!,
+        smartBrush: URL(string: "https://withoutbg.com/smart-brush")!  // utm-ok: tagged by withUTM
     )
 
     private func taggedForAnalytics() -> ProductLinks {
@@ -114,7 +116,8 @@ public struct ProductLinks: Decodable, Sendable {
             macApp: Self.withUTM(macApp),
             localAPIDocs: Self.withUTM(localAPIDocs),
             localAPIOpenAPI: localAPIOpenAPI,
-            localAPIGitHub: localAPIGitHub
+            localAPIGitHub: localAPIGitHub,
+            smartBrush: Self.withUTM(smartBrush)
         )
     }
 

@@ -43,6 +43,15 @@ struct WithoutBGApp: App {
         }
         .menuBarExtraStyle(.window)
 
+        Window("Smart Brush", id: SmartBrushWindow.id) {
+            SmartBrushWindow()
+                .environment(model)
+                .preferredColorScheme(appearance.colorScheme)
+        }
+        .defaultSize(BrushEditorView.defaultWindowSize)
+        .defaultPosition(.center)
+        .commandsRemoved()
+
         Window("About withoutBG", id: "about") {
             AboutView(serverStatus: appDelegate.status)
                 .preferredColorScheme(appearance.colorScheme)

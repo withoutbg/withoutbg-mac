@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import SwiftUI
 import WithoutBGCore
@@ -7,10 +8,20 @@ import WithoutBGCore
 struct BrushEditorView: View {
     enum Mode: String { case keep, remove }
 
-    struct Stroke {
+    struct Stroke: Equatable {
         var mode: Mode
         var radius: CGFloat
         var points: [CGPoint]
+    }
+
+    /// Brush radius as a fraction of the image's long side.
+    static let radiusRange: ClosedRange<Double> = 0.001...0.08
+
+    /// Opening size of the Smart Brush window: most of the screen, so the image is
+    /// large on high-resolution displays. Resizing is remembered by the system.
+    static var defaultWindowSize: CGSize {
+        guard let frame = NSScreen.main?.visibleFrame else { return CGSize(width: 1200, height: 900) }
+        return CGSize(width: max(800, frame.width * 0.85), height: max(600, frame.height * 0.9))
     }
 
     let model: AppModel
@@ -19,15 +30,17 @@ struct BrushEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var mode: Mode = .remove
     @State private var radiusFraction: Double = 0.02
+    /// Opacity of the original photo behind the cutout, adjustable while painting.
+    @AppStorage("smartBrushBackgroundOpacity") private var backgroundOpacity: Double = 0.25
     @State private var strokes: [Stroke] = []
     @State private var busy = false
     @State private var error: String?
+    @State private var zoom = BrushCanvasController()
 
     private var job: Job? { model.queue.jobs.first { $0.id == jobID } }
 
     var body: some View {
-        VStack(spacing: 12) {
-            header
+        VStack(spacing: 0) {
             if let job, let original = job.beforeImage, let cutout = job.processedImage {
                 canvas(original: original, cutout: cutout)
             } else {
@@ -35,90 +48,76 @@ struct BrushEditorView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            Divider()
             controls
-            if let error {
-                Text(error).font(.system(size: 11)).foregroundStyle(.red)
-            }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
         }
-        .padding(16)
-        .frame(minWidth: 640, idealWidth: 860, minHeight: 520, idealHeight: 720)
-    }
-
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Smart Brush").font(.system(size: 15, weight: .semibold))
-                Text("Paint Keep over parts that went missing and Remove over parts that should go. "
-                     + "One stroke on an object is enough; the rest of the image stays as it was.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
+        .frame(minWidth: 720, minHeight: 520)
+        .navigationTitle(job.map { "Smart Brush – \($0.fileName)" } ?? "Smart Brush")
+        .focusedSceneValue(\.brushEditor, BrushEditorActions(
+            canUndo: !strokes.isEmpty && !busy,
+            undo: { _ = strokes.popLast() }))
     }
 
     // MARK: - Canvas
 
     private func canvas(original: CGImage, cutout: CGImage) -> some View {
-        let size = CGSize(width: original.width, height: original.height)
-        return GeometryReader { geo in
-            let scale = min(geo.size.width / size.width, geo.size.height / size.height)
-            let shown = CGSize(width: size.width * scale, height: size.height * scale)
-            ZStack {
-                CheckerboardBackground()
-                Image(decorative: original, scale: 1).resizable().opacity(0.25)
-                Image(decorative: cutout, scale: 1).resizable()
-                Canvas { ctx, _ in
-                    for stroke in strokes {
-                        var path = Path()
-                        let pts = stroke.points.map { CGPoint(x: $0.x * scale, y: $0.y * scale) }
-                        if let first = pts.first {
-                            path.move(to: first)
-                            for p in pts.dropFirst() { path.addLine(to: p) }
-                            if pts.count == 1 { path.addLine(to: first) }
-                        }
-                        ctx.stroke(path, with: .color(color(stroke.mode).opacity(0.55)),
-                                   style: StrokeStyle(lineWidth: stroke.radius * 2 * scale,
-                                                      lineCap: .round, lineJoin: .round))
-                    }
-                }
-                if busy {
+        let longSide = CGFloat(max(original.width, original.height))
+        return BrushCanvasView(
+            original: original,
+            cutout: cutout,
+            strokes: strokes,
+            backgroundOpacity: backgroundOpacity,
+            mode: mode,
+            radius: brushRadius(longSide: longSide),
+            enabled: !busy,
+            controller: zoom,
+            onStroke: { strokes.append($0) },
+            onBrushSizeStep: { step in
+                let factor = step > 0 ? 1.25 : 0.8
+                radiusFraction = min(max(radiusFraction * factor, Self.radiusRange.lowerBound),
+                                     Self.radiusRange.upperBound)
+            })
+        .overlay {
+            if busy {
+                ZStack {
                     Color.black.opacity(0.2)
                     ProgressView().controlSize(.large)
                 }
             }
-            .frame(width: shown.width, height: shown.height)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        guard !busy else { return }
-                        let p = CGPoint(x: value.location.x / scale, y: value.location.y / scale)
-                        if strokeOpen, !strokes.isEmpty {
-                            strokes[strokes.count - 1].points.append(p)
-                        } else {
-                            strokeOpen = true
-                            let radius = max(2, CGFloat(radiusFraction) * max(size.width, size.height))
-                            strokes.append(Stroke(mode: mode, radius: radius, points: [p]))
-                        }
-                    }
-                    .onEnded { _ in strokeOpen = false }
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .background(WBGColors.page)
     }
 
-    @State private var strokeOpen = false
-
-    private func color(_ mode: Mode) -> Color { mode == .keep ? .green : .red }
+    private func brushRadius(longSide: CGFloat) -> CGFloat {
+        max(1, CGFloat(radiusFraction) * longSide)
+    }
 
     // MARK: - Controls
 
     private var controls: some View {
-        VStack(spacing: 8) {
-            brushTools
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 14) {
+                brushTools
+                Spacer(minLength: 12)
+                zoomTools
+            }
             HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Paint Keep over parts that went missing, Remove over parts that should go. "
+                         + "Pinch or ⌘-scroll to zoom, Space-drag to pan, [ ] to resize the brush.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                    Link("How to paint strokes that work →", destination: ProductLinks.shared.smartBrush)
+                        .font(.system(size: 11))
+                        .help("Best practices and example strokes on withoutbg.com")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if let error {
+                    Text(error).font(.system(size: 11)).foregroundStyle(.red).lineLimit(2)
+                }
                 if job?.engine == .pro {
                     Text("Pro: 1 credit per Apply")
                         .font(.caption)
@@ -126,7 +125,6 @@ struct BrushEditorView: View {
                         .lineLimit(1)
                         .fixedSize()
                 }
-                Spacer()
                 Button("Done") { dismiss() }
                     .keyboardShortcut(.cancelAction)
                     .disabled(busy)
@@ -151,21 +149,54 @@ struct BrushEditorView: View {
 
             HStack(spacing: 4) {
                 Image(systemName: "circle.fill").font(.system(size: 6))
-                Slider(value: $radiusFraction, in: 0.005...0.08).frame(width: 120)
+                // Square-root scale: more travel for the small sizes used when zoomed in.
+                Slider(value: Binding(
+                    get: { radiusFraction.squareRoot() },
+                    set: { radiusFraction = $0 * $0 }
+                ), in: Self.radiusRange.lowerBound.squareRoot()...Self.radiusRange.upperBound.squareRoot())
+                .frame(width: 140)
                 Image(systemName: "circle.fill").font(.system(size: 12))
             }
             .foregroundStyle(.secondary)
-            .help("Brush size")
+            .help("Brush size ([ and ])")
+
+            HStack(spacing: 4) {
+                Image(systemName: "photo").font(.system(size: 10))
+                Slider(value: $backgroundOpacity, in: 0...1).frame(width: 90)
+                Image(systemName: "photo.fill").font(.system(size: 12))
+            }
+            .foregroundStyle(.secondary)
+            .help("Original photo opacity behind the cutout")
 
             Button { _ = strokes.popLast() } label: { Image(systemName: "arrow.uturn.backward") }
                 .disabled(strokes.isEmpty || busy)
-                .keyboardShortcut("z", modifiers: .command)
                 .help("Undo stroke (⌘Z)")
             Button { strokes.removeAll() } label: { Image(systemName: "eraser") }
                 .disabled(strokes.isEmpty || busy)
                 .help("Clear strokes")
+        }
+    }
 
-            Spacer()
+    private var zoomTools: some View {
+        HStack(spacing: 6) {
+            Button { zoom.zoomOut() } label: { Image(systemName: "minus.magnifyingglass") }
+                .keyboardShortcut("-", modifiers: .command)
+                .help("Zoom out (⌘−)")
+            Text("\(Int((zoom.magnification * 100).rounded()))%")
+                .font(.system(size: 11).monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 44)
+            Button { zoom.zoomIn() } label: { Image(systemName: "plus.magnifyingglass") }
+                .keyboardShortcut("=", modifiers: .command)
+                .help("Zoom in (⌘+)")
+            Button("Fit") { zoom.zoomToFit() }
+                .keyboardShortcut("0", modifiers: .command)
+                .help("Fit to window (⌘0)")
+                .fixedSize()
+            Button("100%") { zoom.zoomToActualSize() }
+                .keyboardShortcut("1", modifiers: .command)
+                .help("Actual size (⌘1)")
+                .fixedSize()
         }
     }
 
@@ -213,5 +244,45 @@ struct BrushEditorView: View {
         }
         let marks = buffer.map { $0 >= 128 }
         return marks.contains(true) ? marks : nil
+    }
+}
+
+/// Lets the app menu's Undo act on Smart Brush strokes while that window is key.
+struct BrushEditorActions {
+    let canUndo: Bool
+    let undo: () -> Void
+}
+
+private struct BrushEditorActionsKey: FocusedValueKey {
+    typealias Value = BrushEditorActions
+}
+
+extension FocusedValues {
+    var brushEditor: BrushEditorActions? {
+        get { self[BrushEditorActionsKey.self] }
+        set { self[BrushEditorActionsKey.self] = newValue }
+    }
+}
+
+/// Content of the single Smart Brush window; shows the job in `AppModel.brushJobID`.
+struct SmartBrushWindow: View {
+    static let id = "smart-brush"
+
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Group {
+            if let id = model.brushJobID {
+                BrushEditorView(model: model, jobID: id).id(id)
+            } else {
+                Color.clear.frame(minWidth: 720, minHeight: 520)
+            }
+        }
+        .onAppear {
+            // Restored at launch with nothing to edit.
+            if model.brushJobID == nil { dismiss() }
+        }
+        .onDisappear { model.brushJobID = nil }
     }
 }
