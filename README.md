@@ -33,6 +33,8 @@ Fix a cutout by painting on it. Right-click a result and choose **Smart Brush…
 
 ![Smart Brush: Keep strokes in green, Remove strokes in red](images/smart-brush.png)
 
+<sub>Photo by <a href="https://unsplash.com/@busgram?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Büşra Salkım</a> on <a href="https://unsplash.com/photos/the-leaning-tower-of-the-leaning-tower-of-pisa-8AlX-lwVXIE?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Unsplash</a></sub>
+
 - Opens in its own resizable window, sized for large and high-resolution displays
 - Zoom with pinch or ⌘-scroll, ⌘+ / ⌘− / ⌘0 (fit) / ⌘1 (100%); pan with scroll or Space-drag
 - Brush size from the slider or `[` and `]`, with an outline under the pointer; fine enough for pixel-level work when zoomed in
