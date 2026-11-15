@@ -31,6 +31,8 @@ A native macOS app powered by **withoutBG Open Weights**. Drag and drop images f
 
 Fix a cutout by painting on it. Right-click a result and choose **Smart Brush…**, paint **Keep** (green) over what went missing and **Remove** (red) over what should go, then press **Apply**. One stroke on an object is enough; the rest of the image stays as it was. Learn which strokes work best in the [Smart Brush guide](https://withoutbg.com/smart-brush?utm_source=github&utm_medium=readme&utm_campaign=open-weights-v4&utm_content=withoutbg-mac-smart-brush).
 
+![Smart Brush: Keep strokes in green, Remove strokes in red](images/smart-brush.png)
+
 - Opens in its own resizable window, sized for large and high-resolution displays
 - Zoom with pinch or ⌘-scroll, ⌘+ / ⌘− / ⌘0 (fit) / ⌘1 (100%); pan with scroll or Space-drag
 - Brush size from the slider or `[` and `]`, with an outline under the pointer; fine enough for pixel-level work when zoomed in
