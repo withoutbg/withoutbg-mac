@@ -96,6 +96,13 @@ struct BackgroundRemovalView: View {
 
     @ViewBuilder
     private var statusView: some View {
+        statusContent
+            .padding(.horizontal, 10)
+            .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private var statusContent: some View {
         if model.hasSelection {
             Text("\(model.selection.count) selected")
                 .font(.system(size: 12))

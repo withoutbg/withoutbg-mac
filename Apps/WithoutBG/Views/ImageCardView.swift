@@ -19,12 +19,11 @@ struct ImageCardView: View {
     private var isDone: Bool { job.status == .done }
 
     var body: some View {
-        if isDone {
-            card.dragOut(items: { model.dragItems(for: job) }) { dragging in
-                model.isDraggingOut = dragging
-            }
-        } else {
-            card
+        // One stable view tree for every status. Swapping branches on `isDone`
+        // rebuilt the card when processing finished, replaying `fadeInUp` so the
+        // thumbnail blinked out. Drag-out vends nothing until the job is done.
+        card.dragOut(items: { isDone ? model.dragItems(for: job) : [] }) { dragging in
+            model.isDraggingOut = dragging
         }
     }
 
